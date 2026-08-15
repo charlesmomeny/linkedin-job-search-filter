@@ -20,11 +20,23 @@
 
 const JobFreshness = {
   // True if the card's text contains a "Reposted" label. LinkedIn
-  // shows this as a plain visible badge/line on cards for listings
-  // that have been reposted.
+  // shows this as a plain visible badge/pill on cards for listings
+  // that have been reposted - but, unlike the sentence-style "X ago"
+  // text parsePostedDaysAgo() reads, a badge label is commonly its own
+  // DOM node rendered with no actual whitespace character between it
+  // and an adjacent sibling's text (CSS provides the visual gap, not a
+  // space in the text itself), so card.textContent can read like
+  // "...Reposted2w..." with nothing separating the word from what
+  // follows. A word-boundary regex (\breposted\b) requires a
+  // non-word character on both sides and silently fails to match that
+  // glued-together case, which is exactly what caused this to miss a
+  // real reposted listing. "reposted" is a fixed, extension-controlled
+  // literal (not arbitrary user input), so a plain substring check is
+  // safe here and isn't vulnerable to the false-positive risk word
+  // boundaries exist to prevent for free-text keywords.
   isReposted(text) {
     if (typeof text !== 'string') return false;
-    return /\breposted\b/i.test(text);
+    return text.toLowerCase().includes('reposted');
   },
 
   // Parses LinkedIn's relative "posted X ago" phrasing out of card

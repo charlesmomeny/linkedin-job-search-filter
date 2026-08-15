@@ -24,6 +24,17 @@ test('isReposted: false for an ordinary, non-reposted card', () => {
   assert.equal(JobFreshness.isReposted('program manager\nacme corp\nPromoted\nEasy Apply'), false);
 });
 
+test('isReposted: true even when the label is glued to adjacent text with no whitespace (regression)', () => {
+  // Reproduces the real bug: a badge/pill label rendered as its own
+  // DOM node with no actual space character before/after it in
+  // card.textContent (CSS supplies the visual gap, not a text-node
+  // space), which a \breposted\b word-boundary regex silently failed
+  // to match.
+  assert.equal(JobFreshness.isReposted('program managerReposted2w'), true);
+  assert.equal(JobFreshness.isReposted('titleReposted'), true);
+  assert.equal(JobFreshness.isReposted('Reposted2 weeks ago'), true);
+});
+
 test('isReposted: false for empty/non-string input, does not throw', () => {
   assert.doesNotThrow(() => JobFreshness.isReposted(''));
   assert.doesNotThrow(() => JobFreshness.isReposted(undefined));
