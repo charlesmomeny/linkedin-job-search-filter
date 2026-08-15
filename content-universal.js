@@ -34,9 +34,14 @@ async function init() {
     initSearchResultsFiltering();
   }
   
-  // Show save button on detail pages OR collections pages with currentJobId
+  // Show save controls on detail pages OR collections pages with
+  // currentJobId. Re-runs on every init() (including SPA navigation),
+  // so the current-job section always reflects whichever job is
+  // active now, not just the first one seen.
   if (isDetails || window.location.href.includes('currentJobId=')) {
-    addSaveButton();
+    await updateJobSection();
+  } else {
+    removeJobSection();
   }
   
   // Only init Easy Apply autofill for LinkedIn
@@ -99,29 +104,59 @@ function initSearchResultsFiltering() {
   }, 1000);
 }
 
+// ============================================
+// SHARED EXTENSION PANEL
+//
+// A single floating panel hosts both the search-results filter
+// controls and the current-job save control, instead of two separate
+// floating containers. Each section manages its own content; only the
+// outer panel's position/background/shadow live here.
+// ============================================
+
+function ensureExtensionPanel() {
+  let panel = document.getElementById('job-saver-panel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'job-saver-panel';
+    panel.style.cssText = `
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      z-index: 9999;
+      background: white;
+      padding: 12px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 200px;
+    `;
+    document.body.appendChild(panel);
+  }
+  return panel;
+}
+
+function removePanelIfEmpty() {
+  const panel = document.getElementById('job-saver-panel');
+  if (panel && panel.children.length === 0) {
+    panel.remove();
+  }
+}
+
 function addFilterToggleButton() {
   if (document.getElementById('job-filter-toggle')) return;
-  
+
+  const panel = ensureExtensionPanel();
+
   const toggleContainer = document.createElement('div');
   toggleContainer.id = 'job-filter-toggle';
   toggleContainer.style.cssText = `
-    position: fixed;
-    top: 80px;
-    right: 20px;
-    z-index: 9999;
-    background: white;
-    padding: 12px;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     display: flex;
     flex-direction: column;
     gap: 8px;
-    min-width: 200px;
-    max-height: none;
-    height: auto;
-    overflow: visible;
   `;
-  
+
   const title = document.createElement('div');
   title.textContent = `🎯 ${currentAdapter.name} Filters`;
   title.style.cssText = 'font-weight: 600; font-size: 14px; margin-bottom: 4px;';
@@ -193,7 +228,9 @@ function addFilterToggleButton() {
   toggleContainer.appendChild(toggleBtn);
   toggleContainer.appendChild(viewSavedBtn);
   toggleContainer.appendChild(settingsBtn);
-  document.body.appendChild(toggleContainer);
+  panel.appendChild(toggleContainer);
+
+  syncJobSectionChrome();
 }
 
 function applyFiltersToSearchResults(retryCount = 0) {
@@ -412,72 +449,136 @@ function observeNewJobs() {
 }
 
 // ============================================
-// JOB DETAILS PAGE - SAVE BUTTON
+// JOB DETAILS - CURRENT JOB SECTION (in the shared panel)
 // ============================================
 
-function addSaveButton() {
-  if (document.getElementById('job-saver-btn')) return;
-  
-  const filterPanel = document.getElementById('job-filter-toggle');
-  const topPosition = filterPanel ? '340px' : '80px';
-  
-  const buttonContainer = document.createElement('div');
-  buttonContainer.id = 'job-saver-container';
-  buttonContainer.style.cssText = `
-    position: fixed;
-    top: ${topPosition};
-    right: 20px;
-    z-index: 9999;
-    background: white;
-    padding: 10px;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  `;
-  
-  const button = document.createElement('button');
-  button.id = 'job-saver-btn';
-  button.className = 'job-saver-button';
-  button.textContent = '💾 Save Job';
-  button.style.cssText = `
-    width: 100%;
-    padding: 10px 20px;
-    background: ${currentAdapter.color};
-    color: white;
-    border: none;
-    border-radius: 20px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-  `;
-  
-  button.addEventListener('click', saveCurrentJob);
-  
-  const viewSavedBtn = document.createElement('button');
-  viewSavedBtn.textContent = '📂 View Saved';
-  viewSavedBtn.style.cssText = `
-    width: 100%;
-    padding: 10px 20px;
-    background: #057642;
-    color: white;
-    border: none;
-    border-radius: 20px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-  `;
-  
-  viewSavedBtn.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ action: 'openPopup' });
-  });
-  
-  buttonContainer.appendChild(button);
-  buttonContainer.appendChild(viewSavedBtn);
-  document.body.appendChild(buttonContainer);
-  
-  console.log('Job Saver: Save button added successfully');
+// Creates the current-job section inside the shared panel the first
+// time it's needed, then - on every call, including re-runs from
+// SPA navigation - refreshes it to reflect whichever job is active
+// now. This is what makes moving from Job A to Job B correctly update
+// the existing control instead of leaving a stale one behind.
+async function updateJobSection() {
+  const panel = ensureExtensionPanel();
+
+  let section = document.getElementById('job-saver-section');
+  if (!section) {
+    section = document.createElement('div');
+    section.id = 'job-saver-section';
+    section.style.cssText = `
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    `;
+
+    const label = document.createElement('div');
+    label.id = 'job-saver-label';
+    label.textContent = 'CURRENT JOB';
+    label.style.cssText = `
+      font-size: 11px;
+      font-weight: 600;
+      color: #888;
+      letter-spacing: 0.5px;
+    `;
+
+    const button = document.createElement('button');
+    button.id = 'job-saver-btn';
+    button.className = 'job-saver-button';
+    button.textContent = '💾 Save Job';
+    button.style.cssText = `
+      width: 100%;
+      padding: 10px 20px;
+      background: ${currentAdapter.color};
+      color: white;
+      border: none;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    `;
+    button.addEventListener('click', saveCurrentJob);
+
+    section.appendChild(label);
+    section.appendChild(button);
+    panel.appendChild(section);
+
+    console.log('Job Saver: Job section added to shared panel');
+  }
+
+  // View Saved Jobs must exist exactly once in the panel. The filter
+  // section already provides it when present; only add/remove this
+  // section's own copy to match whether that's currently the case.
+  syncJobSectionChrome();
+
+  await refreshJobSectionState();
+}
+
+function removeJobSection() {
+  const section = document.getElementById('job-saver-section');
+  if (section) section.remove();
+  removePanelIfEmpty();
+}
+
+// Keeps the job section's separator/label border and its own "View
+// Saved Jobs" button in sync with whether the filter section is
+// currently present in the shared panel, so the button never appears
+// twice and the separator only shows when there's a filter section
+// above it to separate from.
+function syncJobSectionChrome() {
+  const section = document.getElementById('job-saver-section');
+  if (!section) return;
+
+  const hasFilterSection = !!document.getElementById('job-filter-toggle');
+
+  const label = document.getElementById('job-saver-label');
+  if (label) {
+    label.style.borderTop = hasFilterSection ? '1px solid #e5e5e5' : 'none';
+    label.style.paddingTop = hasFilterSection ? '8px' : '0';
+  }
+
+  const ownViewSavedBtn = document.getElementById('job-section-view-saved-btn');
+  if (hasFilterSection && ownViewSavedBtn) {
+    ownViewSavedBtn.remove();
+  } else if (!hasFilterSection && !ownViewSavedBtn) {
+    const viewSavedBtn = document.createElement('button');
+    viewSavedBtn.id = 'job-section-view-saved-btn';
+    viewSavedBtn.textContent = '📂 View Saved Jobs';
+    viewSavedBtn.style.cssText = `
+      width: 100%;
+      padding: 8px 12px;
+      background: #057642;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+    `;
+    viewSavedBtn.addEventListener('click', () => {
+      chrome.runtime.sendMessage({ action: 'openPopup' });
+    });
+    section.appendChild(viewSavedBtn);
+  }
+}
+
+// Sets the Save Job button's persistent label/color to reflect
+// whether the currently active job is already saved.
+async function refreshJobSectionState() {
+  const button = document.getElementById('job-saver-btn');
+  if (!button || !currentAdapter) return;
+
+  try {
+    const jobData = currentAdapter.extractJobData();
+    const result = await chrome.storage.local.get(['savedJobs']);
+    const savedJobs = result.savedJobs || {};
+    const isSaved = !!window.JobIdentity.findExistingKey(savedJobs, jobData);
+
+    button.textContent = isSaved ? '✓ Saved' : '💾 Save Job';
+    button.style.backgroundColor = isSaved ? '#057642' : currentAdapter.color;
+  } catch (error) {
+    console.error('Job Saver: Error checking saved state:', error);
+    button.textContent = '💾 Save Job';
+    button.style.backgroundColor = currentAdapter.color;
+  }
 }
 
 async function saveCurrentJob() {
@@ -517,10 +618,7 @@ async function saveCurrentJob() {
 
       showNotification(`You already saved this job on ${savedDate}`);
 
-      setTimeout(() => {
-        button.textContent = '💾 Save Job';
-        button.style.backgroundColor = currentAdapter.color;
-      }, 2000);
+      setTimeout(refreshJobSectionState, 2000);
       return;
     }
 
@@ -534,21 +632,15 @@ async function saveCurrentJob() {
     button.style.backgroundColor = '#057642';
     
     showNotification(`Saved job from ${currentAdapter.name}!`);
-    
-    setTimeout(() => {
-      button.textContent = '💾 Save Job';
-      button.style.backgroundColor = currentAdapter.color;
-    }, 2000);
-    
+
+    setTimeout(refreshJobSectionState, 2000);
+
   } catch (error) {
     console.error('Job Saver: Error saving job:', error);
     button.textContent = '✗ Error';
     button.style.backgroundColor = '#cc1016';
-    
-    setTimeout(() => {
-      button.textContent = '💾 Save Job';
-      button.style.backgroundColor = currentAdapter.color;
-    }, 2000);
+
+    setTimeout(refreshJobSectionState, 2000);
   }
 }
 
