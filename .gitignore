@@ -1,0 +1,10 @@
+# Personal saved-job exports (generated locally by this extension; contain
+# real job-search activity and must never be committed).
+# Covers files matching the on-disk backup naming pattern currently present...
+saved-jobs-backup*.csv
+# ...and the filename pattern popup.js/popup-updated.js actually generate
+# on export (multi-site-jobs-YYYY-MM-DD.csv), so future exports are caught too.
+multi-site-jobs-*.csv
+
+# OS cruft
+.DS_Store

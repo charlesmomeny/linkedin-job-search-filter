@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Saved Jobs</title>
+  <style>
+    body {
+      width: 500px;
+      min-height: 400px;
+      max-height: 600px;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 14px;
+    }
+    
+    .header {
+      background: #0a66c2;
+      color: white;
+      padding: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .header h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    
+    .header-buttons {
+      display: flex;
+      gap: 8px;
+    }
+    
+    button {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    
+    .export-btn {
+      background: white;
+      color: #0a66c2;
+    }
+    
+    .export-btn:hover {
+      background: #f3f6f8;
+    }
+    
+    .clear-btn {
+      background: #cc1016;
+      color: white;
+    }
+    
+    .clear-btn:hover {
+      background: #a00d13;
+    }
+    
+    .stats {
+      padding: 12px 15px;
+      background: #f3f6f8;
+      border-bottom: 1px solid #ddd;
+      font-size: 13px;
+      color: #666;
+    }
+    
+    .jobs-container {
+      overflow-y: auto;
+      max-height: 480px;
+      padding: 10px 15px;
+    }
+    
+    .job-card {
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 10px;
+      background: white;
+      transition: box-shadow 0.2s;
+    }
+    
+    .job-card:hover {
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .job-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #0a66c2;
+      margin-bottom: 6px;
+      cursor: pointer;
+      text-decoration: none;
+      display: block;
+    }
+    
+    .job-title:hover {
+      text-decoration: underline;
+    }
+    
+    .job-company {
+      font-size: 14px;
+      color: #333;
+      margin-bottom: 4px;
+    }
+    
+    .job-location {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 6px;
+    }
+    
+    .job-date {
+      font-size: 12px;
+      color: #999;
+    }
+    
+    .job-actions {
+      margin-top: 8px;
+      display: flex;
+      gap: 8px;
+    }
+    
+    .delete-btn {
+      background: #fff;
+      color: #cc1016;
+      border: 1px solid #cc1016;
+      padding: 4px 8px;
+      font-size: 12px;
+    }
+    
+    .delete-btn:hover {
+      background: #cc1016;
+      color: white;
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #666;
+    }
+    
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 15px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>💾 Saved Jobs</h1>
+    <div class="header-buttons">
+      <button class="export-btn" id="importBtn">Import CSV</button>
+      <button class="export-btn" id="exportBtn">Export CSV</button>
+      <button class="clear-btn" id="clearBtn">Clear All</button>
+    </div>
+  </div>
+  
+  <div class="stats">
+    <span id="jobCount">0 jobs saved</span>
+  </div>
+  
+  <div class="jobs-container" id="jobsContainer">
+    <!-- Jobs will be inserted here -->
+  </div>
+  
+  <!-- Hidden file input for CSV import -->
+  <input type="file" id="csvFileInput" accept=".csv" style="display: none;">
+  
+  <script src="popup.js"></script>
+</body>
+</html>

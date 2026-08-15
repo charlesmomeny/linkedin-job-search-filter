@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Multi-Site Job Saver - Filter Settings</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f3f6f8;
+    }
+    
+    .header {
+      background: #0a66c2;
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    
+    .header h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+    
+    .header p {
+      margin: 10px 0 0 0;
+      opacity: 0.9;
+      font-size: 14px;
+    }
+    
+    .section {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .section h2 {
+      margin-top: 0;
+      font-size: 18px;
+      color: #333;
+      border-bottom: 2px solid #0a66c2;
+      padding-bottom: 10px;
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+    }
+    
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #333;
+      font-size: 14px;
+    }
+    
+    .help-text {
+      font-size: 12px;
+      color: #666;
+      margin-top: 5px;
+      font-style: italic;
+    }
+    
+    textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      font-family: monospace;
+      resize: vertical;
+    }
+    
+    textarea:focus {
+      outline: none;
+      border-color: #0a66c2;
+    }
+    
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"],
+    input[type="url"],
+    input[type="number"],
+    select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    
+    input:focus,
+    select:focus {
+      outline: none;
+      border-color: #0a66c2;
+    }
+    
+    select {
+      cursor: pointer;
+      background: white;
+    }
+    
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+    
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    
+    button {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .save-btn {
+      background: #0a66c2;
+      color: white;
+    }
+    
+    .save-btn:hover {
+      background: #004182;
+    }
+    
+    .reset-btn {
+      background: #666;
+      color: white;
+    }
+    
+    .reset-btn:hover {
+      background: #444;
+    }
+    
+    .status {
+      padding: 12px;
+      border-radius: 4px;
+      margin-top: 20px;
+      display: none;
+    }
+    
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    
+    .example {
+      background: #f8f9fa;
+      padding: 10px;
+      border-left: 3px solid #0a66c2;
+      margin-top: 10px;
+      font-size: 13px;
+    }
+    
+    .example strong {
+      display: block;
+      margin-bottom: 5px;
+    }
+    
+    .field-mapping {
+      background: #f8f9fa;
+      padding: 12px;
+      border-radius: 4px;
+      margin-bottom: 10px;
+      border: 1px solid #ddd;
+    }
+    
+    .field-mapping-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    
+    .field-question {
+      font-weight: 600;
+      color: #333;
+      font-size: 13px;
+      flex: 1;
+    }
+    
+    .field-mapping-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 8px;
+    }
+    
+    .field-mapping-controls select,
+    .field-mapping-controls input {
+      flex: 1;
+    }
+    
+    .delete-mapping-btn {
+      background: #cc1016;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    
+    .delete-mapping-btn:hover {
+      background: #a00d13;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🎯 Multi-Site Job Filter Settings</h1>
+    <p>Configure filters to automatically hide jobs that don't match your criteria on LinkedIn, Built In, and Himalayas</p>
+  </div>
+
+  <div class="section">
+    <h2>❌ Exclude Keywords (Jobs to Hide)</h2>
+    
+    <div class="form-group">
+      <label for="excludeTitles">Exclude from Job Title</label>
+      <textarea id="excludeTitles" placeholder="Enter keywords to exclude, one per line"></textarea>
+      <div class="help-text">Jobs with these words in the title will be hidden</div>
+      <div class="example">
+        <strong>Example:</strong>
+        Technical<br>
+        Engineer<br>
+        Sales<br>
+        Client Success
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="excludeAnywhere">Exclude from Anywhere (Title, Description, Company)</label>
+      <textarea id="excludeAnywhere" placeholder="Enter keywords to exclude, one per line"></textarea>
+      <div class="help-text">Jobs with these words anywhere will be hidden</div>
+      <div class="example">
+        <strong>Example:</strong>
+        medical<br>
+        fintech<br>
+        cybersecurity<br>
+        client-facing
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="excludeLocations">Exclude Locations</label>
+      <textarea id="excludeLocations" placeholder="Enter locations to exclude, one per line"></textarea>
+      <div class="help-text">Jobs in these locations will be hidden</div>
+      <div class="example">
+        <strong>Example:</strong>
+        Redwood City<br>
+        Foster City<br>
+        New York
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>✅ Include Keywords (Jobs to Highlight)</h2>
+    
+    <div class="form-group">
+      <label for="includeTitles">Must Include in Title</label>
+      <textarea id="includeTitles" placeholder="Enter required keywords, one per line"></textarea>
+      <div class="help-text">Jobs must have at least one of these words in the title (leave empty to disable)</div>
+      <div class="example">
+        <strong>Example:</strong>
+        Senior<br>
+        Program Manager<br>
+        PMO
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="includeLocations">Preferred Locations</label>
+      <textarea id="includeLocations" placeholder="Enter preferred locations, one per line"></textarea>
+      <div class="help-text">Highlight jobs in these locations (leave empty to disable)</div>
+      <div class="example">
+        <strong>Example:</strong>
+        Remote<br>
+        Hybrid<br>
+        Pleasanton
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>🤖 Easy Apply Autofill</h2>
+    
+    <div class="form-group">
+      <label for="enableAutofill">Enable Easy Apply Autofill</label>
+      <div class="checkbox-group">
+        <input type="checkbox" id="enableAutofill">
+        <label for="enableAutofill" style="margin: 0;">Automatically fill Easy Apply forms</label>
+      </div>
+      <div class="help-text">When enabled, the extension will auto-fill known fields in Easy Apply forms</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>👤 Your Profile Information</h2>
+    <p style="color: #666; font-size: 13px; margin-top: -10px;">This information will be used to autofill Easy Apply forms</p>
+    
+    <div class="form-group">
+      <label for="firstName">First Name</label>
+      <input type="text" id="firstName" placeholder="John">
+    </div>
+    
+    <div class="form-group">
+      <label for="lastName">Last Name</label>
+      <input type="text" id="lastName" placeholder="Doe">
+    </div>
+    
+    <div class="form-group">
+      <label for="email">Email</label>
+      <input type="email" id="email" placeholder="john.doe@email.com">
+    </div>
+    
+    <div class="form-group">
+      <label for="phone">Phone Number</label>
+      <input type="tel" id="phone" placeholder="(555) 123-4567">
+    </div>
+    
+    <div class="form-group">
+      <label for="city">City</label>
+      <input type="text" id="city" placeholder="San Francisco">
+    </div>
+    
+    <div class="form-group">
+      <label for="state">State</label>
+      <input type="text" id="state" placeholder="CA">
+    </div>
+    
+    <div class="form-group">
+      <label for="zipCode">Zip Code</label>
+      <input type="text" id="zipCode" placeholder="94102">
+    </div>
+    
+    <div class="form-group">
+      <label for="linkedinUrl">LinkedIn Profile URL</label>
+      <input type="url" id="linkedinUrl" placeholder="https://www.linkedin.com/in/yourprofile">
+    </div>
+    
+    <div class="form-group">
+      <label for="websiteUrl">Website/Portfolio URL (Optional)</label>
+      <input type="url" id="websiteUrl" placeholder="https://yourwebsite.com">
+    </div>
+    
+    <div class="form-group">
+      <label for="yearsExperience">Years of Experience</label>
+      <input type="number" id="yearsExperience" placeholder="5">
+    </div>
+    
+    <div class="form-group">
+      <label for="workAuthorization">Work Authorization</label>
+      <select id="workAuthorization">
+        <option value="">Select...</option>
+        <option value="us_citizen">US Citizen</option>
+        <option value="green_card">Green Card Holder</option>
+        <option value="work_visa">Work Visa</option>
+        <option value="need_sponsorship">Need Sponsorship</option>
+      </select>
+    </div>
+    
+    <div class="form-group">
+      <label for="veteranStatus">Veteran Status (Optional)</label>
+      <select id="veteranStatus">
+        <option value="">Prefer not to answer</option>
+        <option value="not_veteran">I am not a veteran</option>
+        <option value="veteran">I am a veteran</option>
+        <option value="protected_veteran">I identify as a protected veteran</option>
+      </select>
+    </div>
+    
+    <div class="form-group">
+      <label for="disabilityStatus">Disability Status (Optional)</label>
+      <select id="disabilityStatus">
+        <option value="">Prefer not to answer</option>
+        <option value="no">No, I don't have a disability</option>
+        <option value="yes">Yes, I have a disability</option>
+      </select>
+    </div>
+    
+    <div class="form-group">
+      <label for="gender">Gender (Optional)</label>
+      <select id="gender">
+        <option value="">Prefer not to answer</option>
+        <option value="male">Male</option>
+        <option value="female">Female</option>
+        <option value="non_binary">Non-binary</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    
+    <div class="form-group">
+      <label for="race">Race/Ethnicity (Optional)</label>
+      <select id="race">
+        <option value="">Prefer not to answer</option>
+        <option value="hispanic">Hispanic or Latino</option>
+        <option value="white">White</option>
+        <option value="black">Black or African American</option>
+        <option value="asian">Asian</option>
+        <option value="native_american">Native American or Alaska Native</option>
+        <option value="pacific_islander">Native Hawaiian or Pacific Islander</option>
+        <option value="two_or_more">Two or more races</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>🎓 Field Mappings (Teaching the Extension)</h2>
+    <p style="color: #666; font-size: 13px; margin-top: -10px;">
+      When you fill out Easy Apply forms, the extension learns new fields. 
+      Map unknown fields to your profile data or custom answers.
+    </p>
+    
+    <div id="fieldMappingsContainer">
+      <div style="color: #666; font-style: italic; padding: 20px; text-align: center;">
+        No field mappings yet. Start applying to jobs and the extension will learn!
+      </div>
+    </div>
+    
+    <button id="addCustomMappingBtn" class="reset-btn" style="margin-top: 10px;">
+      ➕ Add Custom Mapping
+    </button>
+  </div>
+
+  <div class="section">
+    <h2>⚙️ Filter Behavior</h2>
+    
+    <div class="form-group">
+      <div class="checkbox-group">
+        <input type="checkbox" id="enableFilters" checked>
+        <label for="enableFilters" style="margin: 0;">Enable automatic filtering</label>
+      </div>
+      <div class="help-text">Turn off to disable all filters temporarily</div>
+    </div>
+
+    <div class="form-group">
+      <div class="checkbox-group">
+        <input type="checkbox" id="hideFiltered" checked>
+        <label for="hideFiltered" style="margin: 0;">Completely hide filtered jobs (vs. dim them)</label>
+      </div>
+      <div class="help-text">When unchecked, filtered jobs will be dimmed but still visible</div>
+    </div>
+
+    <div class="form-group">
+      <div class="checkbox-group">
+        <input type="checkbox" id="showReason" checked>
+        <label for="showReason" style="margin: 0;">Show why jobs were filtered</label>
+      </div>
+      <div class="help-text">Display the reason when hovering over filtered jobs</div>
+    </div>
+    
+    <div class="form-group">
+      <div class="checkbox-group">
+        <input type="checkbox" id="filterReposted">
+        <label for="filterReposted" style="margin: 0;">Filter out reposted jobs</label>
+      </div>
+      <div class="help-text">Hide jobs that have been reposted (likely filled or stale positions)</div>
+    </div>
+    
+    <div class="form-group">
+      <label for="maxJobAge">Maximum job age (days)</label>
+      <input type="number" id="maxJobAge" placeholder="7" min="1" max="365">
+      <div class="help-text">Hide jobs posted more than this many days ago (leave empty to disable)</div>
+      <div class="example">
+        <strong>Examples:</strong>
+        7 = Only show jobs from the past week<br>
+        1 = Only show jobs from the past 24 hours<br>
+        30 = Only show jobs from the past month
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label for="minSalary">Minimum Salary (Built In only)</label>
+      <input type="number" id="minSalary" placeholder="100000" min="0" step="5000">
+      <div class="help-text">Hide Built In jobs with salaries starting below this amount</div>
+    </div>
+    
+    <div class="form-group">
+      <label for="maxSalary">Maximum Salary (Built In only)</label>
+      <input type="number" id="maxSalary" placeholder="200000" min="0" step="5000">
+      <div class="help-text">Hide Built In jobs with salaries starting above this amount</div>
+      <div class="example">
+        <strong>Example:</strong> Min: $100,000 and Max: $180,000 = Only show jobs in the $100K-$180K range
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <div class="checkbox-group">
+        <input type="checkbox" id="hideNoSalary">
+        <label for="hideNoSalary" style="margin: 0;">Hide jobs with no salary listed (Built In only)</label>
+      </div>
+      <div class="help-text">Filter out Built In jobs that don't show salary information</div>
+    </div>
+  </div>
+
+  <div class="button-group">
+    <button class="save-btn" id="saveBtn">💾 Save Settings</button>
+    <button class="reset-btn" id="resetBtn">🔄 Reset to Defaults</button>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <script src="options.js"></script>
+</body>
+</html>

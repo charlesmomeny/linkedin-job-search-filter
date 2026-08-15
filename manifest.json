@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "Multi-Site Job Saver",
+  "version": "3.0",
+  "description": "Save jobs from LinkedIn, Built In, and Himalayas to your local database with filtering",
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://www.linkedin.com/*",
+    "https://builtin.com/*",
+    "https://himalayas.app/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Multi-Site Job Saver"
+  },
+  "options_page": "options.html",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.linkedin.com/jobs/*",
+        "https://builtin.com/jobs*",
+        "https://builtin.com/job/*",
+        "https://www.builtin.com/jobs*",
+        "https://www.builtin.com/job/*",
+        "https://himalayas.app/jobs/*",
+        "https://himalayas.app/job/*"
+      ],
+      "js": ["site-adapters.js", "content-universal.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "48": "icon.png"
+  }
+}
