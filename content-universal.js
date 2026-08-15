@@ -335,10 +335,12 @@ function evaluateJobCard(card) {
     }
   }
   
-  // Check exclude filters anywhere (use substring match for company names)
+  // Check exclude filters anywhere (title, company, location, etc.)
   for (const keyword of filterSettings.excludeAnywhere) {
-    // Simple case-insensitive substring match (no word boundaries)
-    if (fullText.toLowerCase().includes(keyword.toLowerCase())) {
+    // Same safe, literal whole-word matching as the other keyword
+    // filters (Package 3) - previously a raw substring check, so
+    // excluding "art" would also match "start", "smart", "party".
+    if (window.KeywordMatching.containsKeyword(fullText, keyword)) {
       result.shouldFilter = true;
       result.reason = `Contains "${keyword}"`;
       return result;

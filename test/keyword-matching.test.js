@@ -101,3 +101,33 @@ test('keyword consisting entirely of punctuation does not crash', () => {
   assert.doesNotThrow(() => KeywordMatching.containsKeyword('!!! urgent hire !!!', '!!!'));
   assert.equal(KeywordMatching.containsKeyword('!!! urgent hire !!!', '!!!'), true);
 });
+
+// ---------------------------------------------------------------------
+// excludeAnywhere regression: this filter previously used a raw
+// substring check instead of containsKeyword(), so excluding "art"
+// would also match "start", "smart", and "party". Now that
+// evaluateJobCard()'s excludeAnywhere loop calls containsKeyword()
+// like the other keyword filters, these must hold.
+// ---------------------------------------------------------------------
+
+test('excludeAnywhere regression: "art" matches standalone "art"', () => {
+  assert.equal(KeywordMatching.containsKeyword('Studio Art Director', 'art'), true);
+});
+
+test('excludeAnywhere regression: "art" does not match "start", "smart", or "party"', () => {
+  assert.equal(KeywordMatching.containsKeyword('Company kickstart program', 'art'), false);
+  assert.equal(KeywordMatching.containsKeyword('Looking for a smart candidate', 'art'), false);
+  assert.equal(KeywordMatching.containsKeyword('Annual company party planner', 'art'), false);
+});
+
+test('excludeAnywhere regression: normal multi-word terms still match as before', () => {
+  assert.equal(KeywordMatching.containsKeyword('Remote Customer Support Specialist', 'customer support'), true);
+  assert.equal(KeywordMatching.containsKeyword('Backend Software Engineer', 'customer support'), false);
+});
+
+test('excludeAnywhere regression: punctuation-containing terms remain safe (no throw, literal match)', () => {
+  assert.doesNotThrow(() => KeywordMatching.containsKeyword('Seeking a C++ developer', 'C++'));
+  assert.equal(KeywordMatching.containsKeyword('Seeking a C++ developer', 'C++'), true);
+  assert.equal(KeywordMatching.containsKeyword('C# backend role', 'C#'), true);
+  assert.equal(KeywordMatching.containsKeyword('This is a (Remote) position', '(Remote)'), true);
+});
