@@ -353,7 +353,29 @@ function evaluateJobCard(card) {
       return result;
     }
   }
-  
+
+  // Filter reposted listings. jobData.isReposted is only populated by
+  // adapters that can detect it from card text (currently LinkedIn);
+  // it's simply undefined/false elsewhere, so this has no effect on
+  // sites that don't support it.
+  if (filterSettings.filterReposted && jobData.isReposted) {
+    result.shouldFilter = true;
+    result.reason = 'Reposted listing';
+    return result;
+  }
+
+  // Filter jobs older than the configured maximum age. postedDaysAgo
+  // is null when it couldn't be determined from the card text - such
+  // jobs are never filtered by age (fail open, don't hide a job we
+  // can't confidently classify).
+  if (filterSettings.maxJobAge && jobData.postedDaysAgo !== null && jobData.postedDaysAgo !== undefined) {
+    if (jobData.postedDaysAgo > filterSettings.maxJobAge) {
+      result.shouldFilter = true;
+      result.reason = `Posted ${jobData.postedDaysAgo} day${jobData.postedDaysAgo !== 1 ? 's' : ''} ago (max ${filterSettings.maxJobAge})`;
+      return result;
+    }
+  }
+
   // Check salary filters (Built In only)
   if (SiteAdapters.getCurrentSite() === 'builtin') {
     // Filter jobs with no salary if hideNoSalary is enabled

@@ -108,12 +108,21 @@ const SiteAdapters = {
     extractJobDataFromCard(card) {
       const cardText = card.textContent.toLowerCase();
       const textParts = cardText.split('\n').map(s => s.trim()).filter(s => s.length > 0);
-      
+
       return {
         title: textParts.length > 0 ? textParts[0] : '',
         company: textParts.length > 1 ? textParts[1] : '',
         location: '',
-        fullText: cardText
+        fullText: cardText,
+        // LinkedIn shows "Reposted" and "posted X ago" as plain visible
+        // text on the card - the same text this adapter already scrapes
+        // for salary/keyword matching - rather than a stable selector,
+        // since none is reliable given LinkedIn's changing markup.
+        // isReposted is a plain boolean; postedDaysAgo is a number of
+        // days or null when the age couldn't be determined from the
+        // card text (never guessed as 0).
+        isReposted: window.JobFreshness.isReposted(cardText),
+        postedDaysAgo: window.JobFreshness.parsePostedDaysAgo(cardText)
       };
     },
 
