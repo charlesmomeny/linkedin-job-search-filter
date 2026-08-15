@@ -28,10 +28,12 @@ const JobIdentity = {
     return this.normalizeText(source);
   },
 
-  // Himalayas job IDs may contain "/" (site-adapters.js's extractJobId)
-  // or have been rewritten to "_" by historical popup CSV-import code.
-  // Collapse both to the same separator so identity comparison is
-  // stable regardless of which normalization produced the stored value.
+  // Slash-style job IDs (e.g. historical Himalayas records, whose site
+  // adapter has since been removed) may contain "/", or may have been
+  // rewritten to "_" by historical popup CSV-import code. Collapse both
+  // to the same separator so identity comparison stays stable for any
+  // such record regardless of which normalization produced it - this
+  // is generic, not specific to any one currently-supported site.
   normalizeJobId(jobId) {
     return String(jobId).trim().toLowerCase().replace(/[\/_]+/g, '/');
   },

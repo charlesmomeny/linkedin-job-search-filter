@@ -1,4 +1,4 @@
-// Site-specific adapters for LinkedIn, Built In, and Himalayas
+// Site-specific adapters for LinkedIn and Built In
 // This file contains the logic to detect and interact with each site
 
 const SiteAdapters = {
@@ -7,7 +7,6 @@ const SiteAdapters = {
     const hostname = window.location.hostname;
     if (hostname.includes('linkedin.com')) return 'linkedin';
     if (hostname.includes('builtin.com')) return 'builtin';
-    if (hostname.includes('himalayas.app')) return 'himalayas';
     return null;
   },
 
@@ -308,106 +307,6 @@ const SiteAdapters = {
 
     hasEasyApply() {
       return false; // Built In redirects to company sites
-    }
-  },
-
-  // Himalayas adapter
-  himalayas: {
-    name: 'Himalayas',
-    color: '#6366F1',
-
-    isSearchResultsPage() {
-      return window.location.pathname === '/jobs' || 
-             window.location.pathname.startsWith('/jobs?') ||
-             window.location.pathname.startsWith('/jobs/');
-    },
-
-    isJobDetailsPage() {
-      // Himalayas job detail pages: /jobs/company-name/job-id
-      return window.location.pathname.match(/\/jobs\/[^\/]+\/[^\/]+/);
-    },
-
-    getJobCards() {
-      // Himalayas uses article or div elements for job cards
-      const cards = document.querySelectorAll('article[class*="job"], div[class*="job-card"], div[data-testid*="job"]');
-      
-      // Fallback: look for links to job detail pages
-      if (cards.length === 0) {
-        const jobLinks = document.querySelectorAll('a[href*="/jobs/"]');
-        return Array.from(jobLinks).map(link => link.closest('article, div')).filter(Boolean);
-      }
-      
-      return Array.from(cards);
-    },
-
-    extractJobDataFromCard(card) {
-      const cardText = card.textContent;
-      
-      // Try to find title
-      const titleElement = card.querySelector('h2, h3, a[href*="/jobs/"]');
-      const title = titleElement ? titleElement.textContent.trim() : '';
-      
-      // Try to find company
-      const companyElement = card.querySelector('[class*="company"]');
-      const company = companyElement ? companyElement.textContent.trim() : '';
-      
-      // Try to find location (Himalayas focuses on remote jobs)
-      const locationElement = card.querySelector('[class*="location"], [class*="remote"]');
-      const location = locationElement ? locationElement.textContent.trim() : '';
-
-      return {
-        title,
-        company,
-        location,
-        fullText: cardText.toLowerCase()
-      };
-    },
-
-    extractJobData() {
-      const data = {
-        url: window.location.href,
-        jobId: this.extractJobId(window.location.href),
-        title: '',
-        company: '',
-        location: '',
-        source: 'Himalayas',
-        dateSaved: new Date().toISOString()
-      };
-
-      // Extract title
-      const titleElement = document.querySelector('h1') || 
-                          document.querySelector('[class*="job-title"]');
-      if (titleElement) {
-        data.title = titleElement.textContent.trim();
-      }
-
-      // Extract company
-      const companyElement = document.querySelector('[class*="company-name"]') ||
-                            document.querySelector('a[href*="/companies/"]') ||
-                            document.querySelector('[class*="company"]');
-      if (companyElement) {
-        data.company = companyElement.textContent.trim();
-      }
-
-      // Extract location (often "Remote" for Himalayas)
-      const locationElement = document.querySelector('[class*="location"]') ||
-                            document.querySelector('[class*="remote"]') ||
-                            document.querySelector('[class*="timezone"]');
-      if (locationElement) {
-        data.location = locationElement.textContent.trim();
-      }
-
-      return data;
-    },
-
-    extractJobId(url) {
-      // Himalayas URLs: /jobs/company-slug/job-id
-      const match = url.match(/\/jobs\/([^\/]+\/[^\/\?]+)/);
-      return match ? match[1] : null;
-    },
-
-    hasEasyApply() {
-      return false; // Himalayas redirects to application pages
     }
   }
 };

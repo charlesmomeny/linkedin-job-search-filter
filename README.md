@@ -3,13 +3,12 @@
 ## Overview
 
 This Chrome extension allows you to save, filter, and manage job listings from multiple job sites:
-- **LinkedIn** (fully tested)
-- **Built In** (new support)
-- **Himalayas** (new support)
+- **LinkedIn** (primary supported workflow)
+- **Built In** (secondary supported workflow)
 
 ## Features
 
-✅ **Save Jobs**: Save jobs from any of the three supported sites with one click
+✅ **Save Jobs**: Save jobs from any of the supported sites with one click
 ✅ **Filter Search Results**: Hide jobs that don't match your criteria
 ✅ **Export to CSV**: Download all your saved jobs as a spreadsheet
 ✅ **Duplicate Detection**: Get notified when you try to save similar jobs
@@ -80,18 +79,11 @@ Create a 48x48 pixel icon and save it as `icon.png` in the extension folder. You
 4. Click the "💾 Save Job" button
 5. Verify the job is saved with "Built In" as the source
 
-#### Testing on Himalayas
-1. Visit https://himalayas.app/jobs
-2. Look for the filter panel
-3. Open a job listing
-4. Click the save button
-5. Confirm the job is saved with "Himalayas" as the source
-
 ## Important Notes
 
 ### Site Adapters May Need Adjustment
 
-The Built In and Himalayas adapters use **generic selectors** that should work with most job sites, but the actual HTML structure of these sites may differ. If the extension doesn't work correctly on these sites, you may need to:
+The Built In adapter uses **generic selectors** that should work with most job sites, but the actual HTML structure of the site may differ. If the extension doesn't work correctly, you may need to:
 
 1. **Inspect the HTML** of the job pages using Chrome DevTools (F12)
 2. **Update the selectors** in `site-adapters.js` for the specific site
@@ -116,10 +108,10 @@ The Built In and Himalayas adapters use **generic selectors** that should work w
 
 ### Customizing for Specific Sites
 
-To customize the selectors for Built In or Himalayas:
+To customize the selectors for Built In:
 
 1. Open `site-adapters.js`
-2. Find the adapter for the site (e.g., `builtin:` or `himalayas:`)
+2. Find the adapter for the site (e.g., `builtin:`)
 3. Update these methods:
    - `getJobCards()`: Returns array of job card elements
    - `extractJobData()`: Extracts title, company, location from detail page
@@ -137,7 +129,7 @@ getJobCards() {
 
 ### Saving Jobs
 
-1. **Browse jobs** on LinkedIn, Built In, or Himalayas
+1. **Browse jobs** on LinkedIn or Built In
 2. **Click "💾 Save Job"** on any job detail page
 3. **View saved jobs** by clicking the extension icon
 
@@ -163,12 +155,9 @@ getJobCards() {
 - [ ] Filter panel appears on Built In
 - [ ] Save button appears on Built In job pages
 - [ ] Jobs save successfully on Built In
-- [ ] Filter panel appears on Himalayas
-- [ ] Save button appears on Himalayas job pages
-- [ ] Jobs save successfully on Himalayas
 - [ ] Saved jobs appear in popup with correct source badges
 - [ ] CSV export includes all jobs with source column
-- [ ] Filters work on all three sites
+- [ ] Filters work on both sites
 
 ## Troubleshooting
 

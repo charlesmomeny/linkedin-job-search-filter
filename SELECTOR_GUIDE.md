@@ -2,7 +2,7 @@
 
 ## How to Find and Update Selectors
 
-If the extension isn't working on Built In or Himalayas, you'll need to inspect the HTML and update the selectors. Here's how:
+If the extension isn't working on Built In, you'll need to inspect the HTML and update the selectors. Here's how:
 
 ## Step 1: Inspect the Page
 
@@ -28,7 +28,7 @@ Look for these elements and note their selectors:
 
 ## Step 3: Update the Adapter
 
-Open `site-adapters.js` and find the adapter (e.g., `builtin:` or `himalayas:`)
+Open `site-adapters.js` and find the adapter (e.g., `builtin:`)
 
 ### Example: Updating Built In
 
@@ -156,16 +156,6 @@ Typical structure:
   <div class="company">Company Name</div>
   <div class="location">San Francisco, CA</div>
 </div>
-```
-
-### Himalayas (himalayas.app)
-Typical structure:
-```html
-<article class="job-card">
-  <h2 class="title">Product Manager</h2>
-  <div class="company-name">Startup Inc</div>
-  <div class="remote-tag">Remote</div>
-</article>
 ```
 
 ## Debugging Tips

@@ -1,4 +1,4 @@
-// Universal content script that works across LinkedIn, Built In, and Himalayas
+// Universal content script that works across LinkedIn and Built In
 // Uses site adapters to handle site-specific logic
 
 let filterSettings = null;

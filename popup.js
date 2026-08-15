@@ -44,7 +44,7 @@ function displayJobs(jobEntries) {
         <div class="empty-state-icon">📭</div>
         <div>No jobs saved yet</div>
         <div style="font-size: 12px; margin-top: 8px;">
-          Visit LinkedIn, Built In, or Himalayas and click "Save Job"
+          Visit LinkedIn or Built In and click "Save Job"
         </div>
       </div>
     `;
@@ -70,7 +70,10 @@ function createJobCard(dedupeKey, job) {
     minute: '2-digit'
   });
 
-  // Get source badge color
+  // Get source badge color. Himalayas is kept here (though no longer an
+  // actively supported site) purely so any historical Himalayas jobs a
+  // user already saved keep their badge color instead of falling back
+  // to the generic gray.
   const sourceColors = {
     'LinkedIn': '#0a66c2',
     'Built In': '#00A4BD',
@@ -309,7 +312,9 @@ function extractJobIdFromURL(url) {
   match = url.match(/\/job\/[^\/]+\/(\d+)/);
   if (match) return match[1];
   
-  // Himalayas - use full path as ID
+  // Himalayas is no longer an actively supported site, but this branch
+  // is kept so a CSV exported while Himalayas was supported can still
+  // be re-imported and its jobId/duplicate detection work correctly.
   if (url.includes('himalayas.app')) {
     match = url.match(/\/jobs\/([^\/]+\/[^\/\?#]+)/);
     if (match) return match[1].replace(/\//g, '_');
