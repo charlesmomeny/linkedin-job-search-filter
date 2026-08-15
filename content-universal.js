@@ -281,7 +281,7 @@ function evaluateJobCard(card) {
   
   // Check exclude filters for title
   for (const keyword of filterSettings.excludeTitles) {
-    if (containsKeyword(title, keyword)) {
+    if (window.KeywordMatching.containsKeyword(title, keyword)) {
       result.shouldFilter = true;
       result.reason = `Contains "${keyword}" in title`;
       return result;
@@ -300,7 +300,7 @@ function evaluateJobCard(card) {
   
   // Check exclude locations
   for (const loc of filterSettings.excludeLocations) {
-    if (containsKeyword(fullText, loc)) {
+    if (window.KeywordMatching.containsKeyword(fullText, loc)) {
       result.shouldFilter = true;
       result.reason = `Location: ${loc}`;
       return result;
@@ -339,7 +339,7 @@ function evaluateJobCard(card) {
   if (filterSettings.includeTitles.length > 0) {
     let hasRequiredKeyword = false;
     for (const keyword of filterSettings.includeTitles) {
-      if (containsKeyword(title, keyword)) {
+      if (window.KeywordMatching.containsKeyword(title, keyword)) {
         hasRequiredKeyword = true;
         break;
       }
@@ -353,20 +353,13 @@ function evaluateJobCard(card) {
   
   // Check if job should be highlighted
   for (const loc of filterSettings.includeLocations) {
-    if (containsKeyword(fullText, loc)) {
+    if (window.KeywordMatching.containsKeyword(fullText, loc)) {
       result.isHighlighted = true;
       break;
     }
   }
   
   return result;
-}
-
-function containsKeyword(text, keyword) {
-  const textLower = text.toLowerCase();
-  const keywordLower = keyword.toLowerCase();
-  const regex = new RegExp(`\\b${keywordLower}\\b`, 'i');
-  return regex.test(textLower);
 }
 
 function addFilterBadge(card, reason) {
