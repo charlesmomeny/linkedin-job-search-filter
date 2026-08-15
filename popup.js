@@ -193,19 +193,28 @@ async function handleCSVFile(event) {
   
   try {
     const text = await file.text();
-    const lines = text.split('\n').filter(line => line.trim());
-    
-    if (lines.length < 2) {
+
+    // Quote-aware across the whole file, so a quoted field containing
+    // an embedded newline stays part of its logical row instead of
+    // being torn apart before parsing even starts. Rows that are
+    // entirely blank (e.g. a stray blank line in a hand-edited file)
+    // are dropped here, same as the prior line-level filtering did -
+    // but now only after real row boundaries are known.
+    const rows = window.CsvUtils.parseCSV(text).filter(
+      row => row.some(field => field.trim() !== '')
+    );
+
+    if (rows.length < 2) {
       alert('CSV file is empty or invalid');
       return;
     }
-    
-    // Parse CSV
-    const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+
+    // rows[0] is the header row (Title, Company, Location, Source,
+    // URL, Date Saved); columns are read positionally from row 1 on.
     const importedJobs = [];
 
-    for (let i = 1; i < lines.length; i++) {
-      const values = parseCSVLine(lines[i]);
+    for (let i = 1; i < rows.length; i++) {
+      const values = rows[i];
 
       if (values.length >= 6) {
         const job = {
@@ -270,34 +279,6 @@ async function handleCSVFile(event) {
   
   // Reset file input
   event.target.value = '';
-}
-
-function parseCSVLine(line) {
-  const values = [];
-  let current = '';
-  let inQuotes = false;
-  
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-    const nextChar = line[i + 1];
-    
-    if (char === '"') {
-      if (inQuotes && nextChar === '"') {
-        current += '"';
-        i++; // Skip next quote
-      } else {
-        inQuotes = !inQuotes;
-      }
-    } else if (char === ',' && !inQuotes) {
-      values.push(current);
-      current = '';
-    } else {
-      current += char;
-    }
-  }
-  
-  values.push(current); // Add last value
-  return values;
 }
 
 function extractJobIdFromURL(url) {
