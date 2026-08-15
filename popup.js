@@ -80,13 +80,19 @@ function createJobCard(dedupeKey, job) {
     'Himalayas': '#6366F1'
   };
   const sourceColor = sourceColors[job.source] || '#666';
-  
+
+  // job.url may have arrived via CSV import (untrusted file content),
+  // and historical records saved before this check existed could
+  // already contain anything. Never turn an unsafe/invalid value into
+  // an actionable link - render the title as plain text instead.
+  const titleHtml = window.UrlUtils.isSafeJobUrl(job.url)
+    ? `<a href="${escapeHtml(job.url)}" target="_blank" class="job-title">${escapeHtml(job.title || 'Untitled Job')}</a>`
+    : `<span class="job-title" title="No valid link available for this job">${escapeHtml(job.title || 'Untitled Job')}</span>`;
+
   return `
     <div class="job-card">
       <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 6px;">
-        <a href="${escapeHtml(job.url)}" target="_blank" class="job-title">
-          ${escapeHtml(job.title || 'Untitled Job')}
-        </a>
+        ${titleHtml}
         <span style="background: ${sourceColor}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; white-space: nowrap; margin-left: 8px;">
           ${escapeHtml(job.source || 'Unknown')}
         </span>
@@ -225,6 +231,16 @@ async function handleCSVFile(event) {
           url: values[4] || '',
           dateSaved: values[5] || new Date().toISOString()
         };
+
+        // CSV content is untrusted (a file the user picked from disk,
+        // not something this extension generated in this session).
+        // Reject an unsafe/invalid URL scheme (e.g. "javascript:")
+        // rather than trying to repair it - the job is still useful
+        // without a link, so it is kept with an empty url instead of
+        // dropping the whole imported row.
+        if (!window.UrlUtils.isSafeJobUrl(job.url)) {
+          job.url = '';
+        }
 
         // Attach jobId (when derivable from the URL) so this imported
         // job carries the same shape as an organically-saved one, and
