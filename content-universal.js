@@ -7,6 +7,16 @@ let profileData = null;
 let fieldMappings = {};
 let currentAdapter = null;
 
+// Recurring-resource references. Repeated init() calls (LinkedIn's SPA
+// navigation re-runs init() without a full page reload) must reuse or
+// cleanly replace these instead of accumulating duplicates - see
+// observeNewJobs(), observeEasyApplyModal(), and
+// observeEasyApplyButtons() below.
+let jobListObserver = null;
+let jobListObserverTarget = null;
+let easyApplyModalObserver = null;
+let easyApplyButtonPollTimer = null;
+
 // ============================================
 // INITIALIZATION
 // ============================================
@@ -436,16 +446,59 @@ function updateFilterStats(total, filtered) {
   }
 }
 
+// True if `node` is part of the extension's own injected UI (the
+// shared panel, or a filter badge attached to a job card) rather than
+// LinkedIn/Built In's own content.
+function isExtensionOwnedNode(node) {
+  if (!node || node.nodeType !== 1) return false; // only Elements can be confidently "ours"
+  if (typeof node.closest !== 'function') return false;
+  if (node.closest('#job-saver-panel')) return true;
+  if (typeof node.matches === 'function' && node.matches('.job-filter-badge')) return true;
+  return false;
+}
+
+// A childList mutation counts as extension-owned only when every node
+// it added/removed is our own (e.g. a filter badge being appended to
+// or removed from a real job card - the mutation's target is the job
+// card itself, which is why this checks addedNodes/removedNodes, not
+// just the target).
+function isExtensionOwnedMutation(mutation) {
+  if (isExtensionOwnedNode(mutation.target)) return true;
+  const changedNodes = [...mutation.addedNodes, ...mutation.removedNodes];
+  if (changedNodes.length === 0) return false;
+  return changedNodes.every(isExtensionOwnedNode);
+}
+
+// Idempotent: repeated calls (once per SPA-navigation init() pass)
+// reuse the existing observer when it's already watching the current
+// content root, and cleanly disconnect-and-replace it only if that
+// root node changed (e.g. LinkedIn swapped out <main>) - so this never
+// stacks additional observers on top of prior ones.
 function observeNewJobs() {
-  const observer = new MutationObserver(() => {
+  const mainContent = document.querySelector('main') || document.body;
+  const action = window.LifecycleUtils.decideResourceAction(jobListObserverTarget, mainContent);
+
+  if (action === 'reuse') return;
+
+  if (jobListObserver) {
+    jobListObserver.disconnect();
+  }
+
+  jobListObserver = new MutationObserver((mutations) => {
+    // Ignore mutation batches that are entirely the extension's own
+    // badge/panel writes, so applying filters never re-triggers itself
+    // purely from its own DOM changes.
+    const ownershipFlags = mutations.map(isExtensionOwnedMutation);
+    if (!window.LifecycleUtils.isExternalChange(ownershipFlags)) return;
+
     if (filterSettings && filterSettings.enableFilters) {
       clearTimeout(window.jobFilterTimeout);
       window.jobFilterTimeout = setTimeout(applyFiltersToSearchResults, 500);
     }
   });
-  
-  const mainContent = document.querySelector('main') || document.body;
-  observer.observe(mainContent, { childList: true, subtree: true });
+
+  jobListObserverTarget = mainContent;
+  jobListObserver.observe(mainContent, { childList: true, subtree: true });
 }
 
 // ============================================
@@ -687,13 +740,17 @@ function initEasyApplyAutofill() {
   observeEasyApplyModal();
 }
 
+// Self-rescheduling poll. Bounded to a single pending timer no matter
+// how many times this (or initEasyApplyAutofill) is called - each call
+// clears whatever was already pending before scheduling the next one,
+// so repeated init() calls cannot start parallel polling chains.
 function observeEasyApplyButtons() {
   const easyApplyButtons = document.querySelectorAll('button[aria-label*="Easy Apply"]');
-  
+
   easyApplyButtons.forEach(button => {
     if (!button.dataset.autofillReady) {
       button.dataset.autofillReady = 'true';
-      
+
       const indicator = document.createElement('span');
       indicator.textContent = ' 🤖';
       indicator.title = 'Autofill enabled';
@@ -701,27 +758,41 @@ function observeEasyApplyButtons() {
       button.appendChild(indicator);
     }
   });
-  
-  setTimeout(observeEasyApplyButtons, 2000);
+
+  clearTimeout(easyApplyButtonPollTimer);
+  easyApplyButtonPollTimer = setTimeout(observeEasyApplyButtons, 2000);
 }
 
+// Idempotent: document.body never changes across SPA navigation, so a
+// simple existence check (rather than the target-tracking used by
+// observeNewJobs) is enough to guarantee at most one active instance.
 function observeEasyApplyModal() {
-  const observer = new MutationObserver(() => {
+  if (easyApplyModalObserver) return;
+
+  easyApplyModalObserver = new MutationObserver(() => {
     const modal = document.querySelector('[role="dialog"]');
-    
+
     if (modal && !modal.dataset.autofillProcessed) {
       modal.dataset.autofillProcessed = 'true';
       console.log('Job Saver: Easy Apply modal detected');
-      
+
       setTimeout(() => fillEasyApplyForm(modal), 500);
       watchForNextButton(modal);
     }
   });
-  
-  observer.observe(document.body, { childList: true, subtree: true });
+
+  easyApplyModalObserver.observe(document.body, { childList: true, subtree: true });
 }
 
+// Idempotent per modal: clicking "Next" on a multi-step Easy Apply
+// form resets modal.dataset.autofillProcessed, which makes
+// observeEasyApplyModal's still-active observer call this again for
+// the SAME modal - without this guard, each "Next" click would stack
+// another observer on top of the previous one for that modal.
 function watchForNextButton(modal) {
+  if (modal.dataset.nextButtonWatcherAttached) return;
+  modal.dataset.nextButtonWatcherAttached = 'true';
+
   const observer = new MutationObserver(() => {
     const nextButton = modal.querySelector('button[aria-label*="next" i], button[aria-label*="Continue" i]');
     if (nextButton && !nextButton.dataset.watchedForAutofill) {
@@ -734,7 +805,7 @@ function watchForNextButton(modal) {
       });
     }
   });
-  
+
   observer.observe(modal, { childList: true, subtree: true });
 }
 

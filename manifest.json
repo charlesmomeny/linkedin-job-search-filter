@@ -28,7 +28,7 @@
         "https://www.builtin.com/jobs*",
         "https://www.builtin.com/job/*"
       ],
-      "js": ["job-identity.js", "keyword-matching.js", "site-adapters.js", "content-universal.js"],
+      "js": ["job-identity.js", "keyword-matching.js", "lifecycle-utils.js", "site-adapters.js", "content-universal.js"],
       "css": ["styles.css"],
       "run_at": "document_idle"
     }
