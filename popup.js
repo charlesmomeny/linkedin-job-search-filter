@@ -13,34 +13,32 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function loadAndDisplayJobs() {
   try {
-    console.log('Loading saved jobs...');
     const result = await chrome.storage.local.get(['savedJobs']);
     const savedJobs = result.savedJobs || {};
-    
-    console.log('Saved jobs from storage:', savedJobs);
-    console.log('Number of jobs:', Object.keys(savedJobs).length);
-    
-    const jobsArray = Object.values(savedJobs).sort((a, b) => {
-      return new Date(b.dateSaved) - new Date(a.dateSaved);
+
+    // Keep the real storage key paired with each job all the way
+    // through to rendering, so delete always targets the actual
+    // persisted key instead of a recomputed one.
+    const jobEntries = Object.entries(savedJobs).sort((a, b) => {
+      return new Date(b[1].dateSaved) - new Date(a[1].dateSaved);
     });
-    
-    const count = jobsArray.length;
-    document.getElementById('jobCount').textContent = 
+
+    const count = jobEntries.length;
+    document.getElementById('jobCount').textContent =
       `${count} job${count !== 1 ? 's' : ''} saved`;
-    
-    displayJobs(jobsArray);
-    console.log('Jobs displayed successfully');
-    
+
+    displayJobs(jobEntries);
+
   } catch (error) {
     console.error('Error loading jobs:', error);
     showError('Failed to load saved jobs');
   }
 }
 
-function displayJobs(jobs) {
+function displayJobs(jobEntries) {
   const container = document.getElementById('jobsContainer');
-  
-  if (jobs.length === 0) {
+
+  if (jobEntries.length === 0) {
     container.innerHTML = `
       <div class="empty-state">
         <div class="empty-state-icon">📭</div>
@@ -52,9 +50,9 @@ function displayJobs(jobs) {
     `;
     return;
   }
-  
-  container.innerHTML = jobs.map(job => createJobCard(job)).join('');
-  
+
+  container.innerHTML = jobEntries.map(([key, job]) => createJobCard(key, job)).join('');
+
   document.querySelectorAll('.delete-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const key = e.target.dataset.key;
@@ -63,7 +61,7 @@ function displayJobs(jobs) {
   });
 }
 
-function createJobCard(job) {
+function createJobCard(dedupeKey, job) {
   const date = new Date(job.dateSaved).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
@@ -71,9 +69,7 @@ function createJobCard(job) {
     hour: '2-digit',
     minute: '2-digit'
   });
-  
-  const dedupeKey = generateDedupeKey(job);
-  
+
   // Get source badge color
   const sourceColors = {
     'LinkedIn': '#0a66c2',
@@ -108,17 +104,6 @@ function createJobCard(job) {
       </div>
     </div>
   `;
-}
-
-function generateDedupeKey(jobData) {
-  if (jobData.jobId) {
-    return `jobid_${jobData.jobId}`;
-  }
-  
-  const key = `${jobData.title}_${jobData.company}_${jobData.location}`
-    .toLowerCase()
-    .replace(/\s+/g, '_');
-  return key;
 }
 
 async function deleteJob(dedupeKey) {
@@ -214,11 +199,11 @@ async function handleCSVFile(event) {
     
     // Parse CSV
     const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
-    const jobs = {};
-    
+    const importedJobs = [];
+
     for (let i = 1; i < lines.length; i++) {
       const values = parseCSVLine(lines[i]);
-      
+
       if (values.length >= 6) {
         const job = {
           title: values[0] || '',
@@ -228,33 +213,53 @@ async function handleCSVFile(event) {
           url: values[4] || '',
           dateSaved: values[5] || new Date().toISOString()
         };
-        
-        // Extract job ID from URL or create dedupe key
+
+        // Attach jobId (when derivable from the URL) so this imported
+        // job carries the same shape as an organically-saved one, and
+        // so future identity comparisons can use it.
         const jobId = extractJobIdFromURL(job.url);
-        const dedupeKey = jobId ? `jobid_${jobId}` : generateDedupeKey(job);
-        
-        jobs[dedupeKey] = job;
+        if (jobId) job.jobId = jobId;
+
+        importedJobs.push(job);
       }
     }
-    
-    const count = Object.keys(jobs).length;
-    if (count === 0) {
+
+    if (importedJobs.length === 0) {
       alert('No valid jobs found in CSV');
       return;
     }
-    
-    if (confirm(`Import ${count} jobs? This will merge with existing jobs.`)) {
-      // Merge with existing jobs
+
+    if (confirm(`Import ${importedJobs.length} job(s)? This will merge with existing jobs; jobs already saved will be skipped.`)) {
       const result = await chrome.storage.local.get(['savedJobs']);
-      const existingJobs = result.savedJobs || {};
-      const mergedJobs = { ...existingJobs, ...jobs };
-      
-      await chrome.storage.local.set({ savedJobs: mergedJobs });
+      const savedJobs = result.savedJobs || {};
+
+      let addedCount = 0;
+      let skippedCount = 0;
+
+      // Compare each imported job against ALL existing entries by
+      // canonical identity (not by recomputing a key), so re-importing
+      // a CSV exported from this extension's own saved jobs does not
+      // create duplicate entries under a different key format.
+      importedJobs.forEach(job => {
+        const existingKey = window.JobIdentity.findExistingKey(savedJobs, job);
+        if (existingKey) {
+          skippedCount++;
+          return;
+        }
+        const key = window.JobIdentity.storageKey(job);
+        savedJobs[key] = job;
+        addedCount++;
+      });
+
+      await chrome.storage.local.set({ savedJobs });
       await loadAndDisplayJobs();
-      
-      alert(`Successfully imported ${count} jobs!`);
+
+      alert(
+        `Imported ${addedCount} new job${addedCount !== 1 ? 's' : ''}.` +
+        (skippedCount > 0 ? ` ${skippedCount} already saved, skipped.` : '')
+      );
     }
-    
+
   } catch (error) {
     console.error('Error importing CSV:', error);
     alert('Failed to import CSV: ' + error.message);

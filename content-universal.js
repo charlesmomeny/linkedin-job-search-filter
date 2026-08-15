@@ -487,17 +487,6 @@ function addSaveButton() {
   console.log('Job Saver: Save button added successfully');
 }
 
-function generateDedupeKey(jobData) {
-  if (jobData.jobId) {
-    return `${jobData.source}_${jobData.jobId}`;
-  }
-  
-  const key = `${jobData.source}_${jobData.title}_${jobData.company}_${jobData.location}`
-    .toLowerCase()
-    .replace(/\s+/g, '_');
-  return key;
-}
-
 async function saveCurrentJob() {
   const button = document.getElementById('job-saver-btn');
   
@@ -512,31 +501,37 @@ async function saveCurrentJob() {
     if (!jobData.title) jobData.title = 'Job Title Not Found';
     if (!jobData.company) jobData.company = 'Company Not Found';
     
-    const dedupeKey = generateDedupeKey(jobData);
-    
     const result = await chrome.storage.local.get(['savedJobs']);
     const savedJobs = result.savedJobs || {};
-    
-    if (savedJobs[dedupeKey]) {
-      const existingJob = savedJobs[dedupeKey];
+
+    // Compare by canonical identity (source + jobId, or a normalized
+    // title/company/location fallback) rather than a single recomputed
+    // key, so a job already saved under any historical key format
+    // (organic save, older import) is still recognized as "already
+    // saved" instead of being duplicated under a new key.
+    const existingKey = window.JobIdentity.findExistingKey(savedJobs, jobData);
+
+    if (existingKey) {
+      const existingJob = savedJobs[existingKey];
       const savedDate = new Date(existingJob.dateSaved).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
         day: 'numeric'
       });
-      
+
       button.textContent = '✓ Already Saved';
       button.style.backgroundColor = currentAdapter.color;
-      
+
       showNotification(`You already saved this job on ${savedDate}`);
-      
+
       setTimeout(() => {
         button.textContent = '💾 Save Job';
         button.style.backgroundColor = currentAdapter.color;
       }, 2000);
       return;
     }
-    
+
+    const dedupeKey = window.JobIdentity.storageKey(jobData);
     savedJobs[dedupeKey] = jobData;
     await chrome.storage.local.set({ savedJobs });
     

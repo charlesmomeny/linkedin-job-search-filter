@@ -31,7 +31,7 @@
         "https://himalayas.app/jobs/*",
         "https://himalayas.app/job/*"
       ],
-      "js": ["site-adapters.js", "content-universal.js"],
+      "js": ["job-identity.js", "site-adapters.js", "content-universal.js"],
       "css": ["styles.css"],
       "run_at": "document_idle"
     }
