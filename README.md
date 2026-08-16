@@ -40,13 +40,6 @@ relies on can break as a result. See
 
 ## Screenshots
 
-> Screenshots are pending - see [`docs/images/README.md`](docs/images/README.md)
-> for exactly what to capture and how. Automated capture wasn't used
-> here since a real screenshot means either a live, logged-in LinkedIn
-> session (personal data risk) or driving Chrome's native "Load
-> unpacked" file picker (not reachable by browser automation) - both
-> better done by hand, once, by whoever's LinkedIn account it is.
-
 ![LinkedIn search results with the draggable filter panel](docs/images/linkedin-search-panel.png)
 *The floating panel on a LinkedIn job search page - draggable by its header, out of the way of LinkedIn Chat or anything else.*
 
