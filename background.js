@@ -51,5 +51,29 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true; // keep the message channel open for the async response
   }
 
+  if (request.action === 'testDashboardConnection') {
+    // Settings' "Test Connection" control. Separate stored fields
+    // (lastTestAt/lastTestOk) from the job-sync ones above - a manual
+    // connection test and a real job sync are different events and
+    // shouldn't be conflated in the status shown to the user.
+    (async () => {
+      const stored = await chrome.storage.local.get(['dashboardConnection']);
+      const result = await self.DashboardSync.testConnection(stored.dashboardConnection);
+
+      if (stored.dashboardConnection) {
+        await chrome.storage.local.set({
+          dashboardConnection: {
+            ...stored.dashboardConnection,
+            lastTestAt: new Date().toISOString(),
+            lastTestOk: result.ok,
+          },
+        });
+      }
+
+      sendResponse(result);
+    })();
+    return true;
+  }
+
   return true;
 });

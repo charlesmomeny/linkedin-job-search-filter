@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('saveBtn').addEventListener('click', saveSettings);
   document.getElementById('resetBtn').addEventListener('click', resetSettings);
   document.getElementById('saveConnectionBtn').addEventListener('click', saveDashboardConnection);
+  document.getElementById('testConnectionBtn').addEventListener('click', testDashboardConnection);
   document.getElementById('disconnectBtn').addEventListener('click', disconnectDashboard);
 });
 
@@ -134,6 +135,7 @@ async function loadDashboardConnection() {
   const tokenInput = document.getElementById('dashboardToken');
   const hint = document.getElementById('dashboardTokenHint');
   const disconnectBtn = document.getElementById('disconnectBtn');
+  const testConnectionBtn = document.getElementById('testConnectionBtn');
   const statusLine = document.getElementById('connectionStatusLine');
 
   tokenInput.value = '';
@@ -143,6 +145,7 @@ async function loadDashboardConnection() {
     tokenInput.placeholder = 'Paste the token from your dashboard';
     hint.textContent = '';
     disconnectBtn.style.display = 'none';
+    testConnectionBtn.style.display = 'none';
     statusLine.textContent = 'Not configured. Local job saving is unaffected either way.';
     return;
   }
@@ -151,6 +154,7 @@ async function loadDashboardConnection() {
   tokenInput.placeholder = maskToken(connection.token);
   hint.textContent = 'A token is already saved - leave this blank to keep it, or paste a new one to replace it.';
   disconnectBtn.style.display = '';
+  testConnectionBtn.style.display = '';
   statusLine.textContent = describeConnectionStatus(connection);
 }
 
@@ -223,6 +227,61 @@ async function saveDashboardConnection() {
 
   await loadDashboardConnection();
   showDashboardStatus('✓ Connection saved', 'success');
+}
+
+async function testDashboardConnection() {
+  const testBtn = document.getElementById('testConnectionBtn');
+  testBtn.disabled = true;
+  testBtn.textContent = '📡 Testing...';
+
+  try {
+    const response = await sendMessagePromise({ action: 'testDashboardConnection' });
+    showDashboardStatus(describeTestResult(response), response && response.ok ? 'success' : 'error');
+  } catch (error) {
+    // Background script unreachable - never surfaced as anything to
+    // do with the token/dashboard itself.
+    showDashboardStatus('Could not run the connection test right now.', 'error');
+  } finally {
+    testBtn.disabled = false;
+    testBtn.textContent = '📡 Test Connection';
+    await loadDashboardConnection();
+  }
+}
+
+// Maps a DashboardSync.testConnection() result to the four states
+// Settings needs to distinguish: not configured, success,
+// invalid/revoked token, and network/unreachable error.
+function describeTestResult(result) {
+  if (!result) return 'Connection test failed.';
+
+  if (result.ok) {
+    return result.email ? `✓ Connected as ${result.email}` : '✓ Connection working';
+  }
+
+  switch (result.reason) {
+    case 'not-configured':
+      return 'Save a connection first.';
+    case 'unauthorized':
+      return '✗ Token invalid or revoked - generate a new one from the dashboard.';
+    case 'network-error':
+      return '✗ Could not reach the dashboard - check the URL and your network connection.';
+    case 'invalid-url':
+      return '✗ Dashboard URL is not valid.';
+    default:
+      return `✗ Connection test failed${result.status ? ` (HTTP ${result.status})` : ''}.`;
+  }
+}
+
+function sendMessagePromise(message) {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage(message, (response) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+      resolve(response);
+    });
+  });
 }
 
 async function disconnectDashboard() {
