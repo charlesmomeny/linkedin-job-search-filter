@@ -2,13 +2,11 @@
 
 ## Overview
 
-This Chrome extension allows you to save, filter, and manage job listings from multiple job sites:
-- **LinkedIn** (primary supported workflow)
-- **Built In** (secondary supported workflow)
+This Chrome extension allows you to save, filter, and manage job listings from LinkedIn.
 
 ## Features
 
-✅ **Save Jobs**: Save jobs from any of the supported sites with one click
+✅ **Save Jobs**: Save jobs from LinkedIn with one click
 ✅ **Filter Search Results**: Hide jobs that don't match your criteria
 ✅ **Export to CSV**: Download all your saved jobs as a spreadsheet
 ✅ **Duplicate Detection**: Get notified when you try to save similar jobs
@@ -72,18 +70,11 @@ Create a 48x48 pixel icon and save it as `icon.png` in the extension folder. You
 4. Click the "💾 Save Job" button
 5. Check that the job appears in the extension popup
 
-#### Testing on Built In
-1. Visit https://builtin.com/jobs
-2. Look for the filter panel on the right
-3. Open a job listing
-4. Click the "💾 Save Job" button
-5. Verify the job is saved with "Built In" as the source
-
 ## Important Notes
 
-### Site Adapters May Need Adjustment
+### Site Adapter May Need Adjustment
 
-The Built In adapter uses **generic selectors** that should work with most job sites, but the actual HTML structure of the site may differ. If the extension doesn't work correctly, you may need to:
+LinkedIn's HTML structure changes frequently, so the adapter's selectors are best-effort and may occasionally need updating. If the extension doesn't work correctly, you may need to:
 
 1. **Inspect the HTML** of the job pages using Chrome DevTools (F12)
 2. **Update the selectors** in `site-adapters.js` for the specific site
@@ -106,12 +97,12 @@ The Built In adapter uses **generic selectors** that should work with most job s
 - **Solution**: The adapter's `getJobCards()` method needs to target the correct elements
 - Inspect the page and find the container elements for job listings
 
-### Customizing for Specific Sites
+### Customizing the Selectors
 
-To customize the selectors for Built In:
+To customize LinkedIn's selectors:
 
 1. Open `site-adapters.js`
-2. Find the adapter for the site (e.g., `builtin:`)
+2. Find the `linkedin:` adapter
 3. Update these methods:
    - `getJobCards()`: Returns array of job card elements
    - `extractJobData()`: Extracts title, company, location from detail page
@@ -129,7 +120,7 @@ getJobCards() {
 
 ### Saving Jobs
 
-1. **Browse jobs** on LinkedIn or Built In
+1. **Browse jobs** on LinkedIn
 2. **Click "💾 Save Job"** on any job detail page
 3. **View saved jobs** by clicking the extension icon
 
@@ -152,12 +143,9 @@ getJobCards() {
 - [ ] Filter panel appears on LinkedIn job search
 - [ ] Save button appears on LinkedIn job detail pages
 - [ ] Jobs save successfully on LinkedIn
-- [ ] Filter panel appears on Built In
-- [ ] Save button appears on Built In job pages
-- [ ] Jobs save successfully on Built In
 - [ ] Saved jobs appear in popup with correct source badges
 - [ ] CSV export includes all jobs with source column
-- [ ] Filters work on both sites
+- [ ] Filters work on LinkedIn
 
 ## Troubleshooting
 

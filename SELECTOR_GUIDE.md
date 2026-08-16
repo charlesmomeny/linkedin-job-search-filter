@@ -2,11 +2,11 @@
 
 ## How to Find and Update Selectors
 
-If the extension isn't working on Built In, you'll need to inspect the HTML and update the selectors. Here's how:
+If the extension isn't working on LinkedIn, you'll need to inspect the HTML and update the selectors. Here's how:
 
 ## Step 1: Inspect the Page
 
-1. **Go to the job site** (e.g., builtin.com/jobs)
+1. **Go to the job site** (e.g., linkedin.com/jobs)
 2. **Right-click** on a job card → "Inspect"
 3. **Find the container element** that wraps the job card
 4. **Note the class name or data attribute**
@@ -28,11 +28,11 @@ Look for these elements and note their selectors:
 
 ## Step 3: Update the Adapter
 
-Open `site-adapters.js` and find the adapter (e.g., `builtin:`)
+Open `site-adapters.js` and find the `linkedin:` adapter.
 
-### Example: Updating Built In
+### Example: Updating LinkedIn's Selectors
 
-Let's say you inspect builtin.com and find:
+Let's say you inspect linkedin.com and find:
 - Job cards have class: `job-listing-item`
 - Titles are in: `<h3 class="job-title">`
 - Companies are in: `<span class="company-name">`
@@ -40,12 +40,12 @@ Let's say you inspect builtin.com and find:
 Update the adapter:
 
 ```javascript
-builtin: {
+linkedin: {
   // ... other code ...
   
   getJobCards() {
     // OLD:
-    // return Array.from(document.querySelectorAll('[class*="job-item"]'));
+    // return document.querySelectorAll('div[data-view-name="job-search-job-card"]');
     
     // NEW:
     return Array.from(document.querySelectorAll('.job-listing-item'));
@@ -72,7 +72,7 @@ builtin: {
       title: '',
       company: '',
       location: '',
-      source: 'Built In',
+      source: 'LinkedIn',
       dateSaved: new Date().toISOString()
     };
 
@@ -146,10 +146,9 @@ After updating selectors:
    - "Job Saver: Found X job cards" means it's working
    - "Job Saver: Found 0 job cards" means selectors need adjustment
 
-## Common Patterns by Site
+## Common Patterns
 
-### Built In (builtin.com)
-Typical structure:
+Typical job card structure:
 ```html
 <div class="job-item">
   <h3 class="job-title">Software Engineer</h3>
@@ -202,19 +201,19 @@ extractJobData() {
 
 ## Example: Complete Adapter Update
 
-Here's a full example of updating the Built In adapter after inspecting the site:
+Here's a full example of updating the LinkedIn adapter after inspecting the site:
 
 ```javascript
-builtin: {
-  name: 'Built In',
-  color: '#00A4BD',
+linkedin: {
+  name: 'LinkedIn',
+  color: '#0a66c2',
 
   isSearchResultsPage() {
-    return window.location.pathname.includes('/jobs');
+    return window.location.pathname.includes('/jobs/search');
   },
 
   isJobDetailsPage() {
-    return window.location.pathname.match(/\/job\/\d+/);
+    return window.location.pathname.match(/\/jobs\/view\/\d+/);
   },
 
   getJobCards() {
@@ -251,7 +250,7 @@ builtin: {
       title: '',
       company: '',
       location: '',
-      source: 'Built In',
+      source: 'LinkedIn',
       dateSaved: new Date().toISOString()
     };
 
@@ -277,13 +276,13 @@ builtin: {
   },
 
   extractJobId(url) {
-    // URL pattern: /job/123456
-    const match = url.match(/\/job\/(\d+)/);
+    // URL pattern: /jobs/view/123456
+    const match = url.match(/\/jobs\/view\/(\d+)/);
     return match ? match[1] : null;
   },
 
   hasEasyApply() {
-    return false;
+    return true;
   }
 }
 ```

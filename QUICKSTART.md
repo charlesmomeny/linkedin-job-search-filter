@@ -49,14 +49,6 @@ You need a 48x48 pixel icon file named `icon.png`. You have two options:
 5. Go back to LinkedIn job search
 6. Jobs matching your filters will be hidden or dimmed
 
-## Testing Built In
-
-1. Go to https://builtin.com/jobs
-2. Browse jobs or search for something
-3. Click on a job to open details
-4. Look for the "💾 Save Job" button
-5. If the button doesn't appear or doesn't work, see SELECTOR_GUIDE.md
-
 ## Common Issues
 
 ### "Extension does not appear to work"
@@ -97,13 +89,12 @@ Documentation files (optional but helpful):
 
 ## Next Steps
 
-1. ✅ Get it working on LinkedIn first
+1. ✅ Get it working on LinkedIn
 2. ✅ Try saving a few jobs
 3. ✅ Test the filters
 4. ✅ Export to CSV to verify
-5. Then move on to Built In
 
-If Built In doesn't work immediately, that's expected! The site may have a different HTML structure. Follow the SELECTOR_GUIDE.md to customize the selectors.
+If something doesn't work, that can happen since LinkedIn's HTML structure changes over time. Follow the SELECTOR_GUIDE.md to customize the selectors.
 
 ## Need More Help?
 

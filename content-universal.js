@@ -1,4 +1,4 @@
-// Universal content script that works across LinkedIn and Built In
+// Universal content script that works on LinkedIn
 // Uses site adapters to handle site-specific logic
 
 let filterSettings = null;
@@ -69,9 +69,6 @@ async function loadFilterSettings() {
       showReason: true,
       filterReposted: false,
       maxJobAge: null,
-      minSalary: null,
-      maxSalary: null,
-      hideNoSalary: false,
       excludeTitles: [],
       excludeAnywhere: [],
       excludeLocations: [],
@@ -378,34 +375,6 @@ function evaluateJobCard(card) {
     }
   }
 
-  // Check salary filters (Built In only)
-  if (SiteAdapters.getCurrentSite() === 'builtin') {
-    // Filter jobs with no salary if hideNoSalary is enabled
-    if (filterSettings.hideNoSalary && jobData.minSalary === null) {
-      result.shouldFilter = true;
-      result.reason = 'No salary listed';
-      return result;
-    }
-    
-    // Filter jobs below minimum salary
-    if (filterSettings.minSalary && jobData.minSalary !== null) {
-      if (jobData.minSalary < filterSettings.minSalary) {
-        result.shouldFilter = true;
-        result.reason = `Salary below $${(filterSettings.minSalary / 1000).toFixed(0)}K (shows ${jobData.salary || 'unknown'})`;
-        return result;
-      }
-    }
-    
-    // Filter jobs above maximum salary
-    if (filterSettings.maxSalary && jobData.minSalary !== null) {
-      if (jobData.minSalary > filterSettings.maxSalary) {
-        result.shouldFilter = true;
-        result.reason = `Salary above $${(filterSettings.maxSalary / 1000).toFixed(0)}K (shows ${jobData.salary || 'unknown'})`;
-        return result;
-      }
-    }
-  }
-  
   // Check include filters (required keywords in title)
   if (filterSettings.includeTitles.length > 0) {
     let hasRequiredKeyword = false;
@@ -472,7 +441,7 @@ function updateFilterStats(total, filtered) {
 
 // True if `node` is part of the extension's own injected UI (the
 // shared panel, or a filter badge attached to a job card) rather than
-// LinkedIn/Built In's own content.
+// LinkedIn's own content.
 function isExtensionOwnedNode(node) {
   if (!node || node.nodeType !== 1) return false; // only Elements can be confidently "ours"
   if (typeof node.closest !== 'function') return false;

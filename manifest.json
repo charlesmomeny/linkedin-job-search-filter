@@ -2,14 +2,13 @@
   "manifest_version": 3,
   "name": "Multi-Site Job Saver",
   "version": "3.0",
-  "description": "Save jobs from LinkedIn and Built In to your local database with filtering",
+  "description": "Save jobs from LinkedIn to your local database with filtering",
   "permissions": [
     "storage",
     "activeTab"
   ],
   "host_permissions": [
-    "https://www.linkedin.com/*",
-    "https://builtin.com/*"
+    "https://www.linkedin.com/*"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -22,11 +21,7 @@
   "content_scripts": [
     {
       "matches": [
-        "https://www.linkedin.com/jobs/*",
-        "https://builtin.com/jobs*",
-        "https://builtin.com/job/*",
-        "https://www.builtin.com/jobs*",
-        "https://www.builtin.com/job/*"
+        "https://www.linkedin.com/jobs/*"
       ],
       "js": ["job-identity.js", "keyword-matching.js", "lifecycle-utils.js", "job-freshness.js", "site-adapters.js", "content-universal.js"],
       "css": ["styles.css"],

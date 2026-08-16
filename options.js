@@ -7,9 +7,6 @@ const defaultSettings = {
   showReason: true,
   filterReposted: false,
   maxJobAge: null,
-  minSalary: null,
-  maxSalary: null,
-  hideNoSalary: false,
   excludeTitles: [],
   excludeAnywhere: [],
   excludeLocations: [],
@@ -63,10 +60,7 @@ async function loadSettings() {
     document.getElementById('showReason').checked = settings.showReason;
     document.getElementById('filterReposted').checked = settings.filterReposted || false;
     document.getElementById('maxJobAge').value = settings.maxJobAge || '';
-    document.getElementById('minSalary').value = settings.minSalary || '';
-    document.getElementById('maxSalary').value = settings.maxSalary || '';
-    document.getElementById('hideNoSalary').checked = settings.hideNoSalary || false;
-    
+
     document.getElementById('excludeTitles').value = (settings.excludeTitles || []).join('\n');
     document.getElementById('excludeAnywhere').value = (settings.excludeAnywhere || []).join('\n');
     document.getElementById('excludeLocations').value = (settings.excludeLocations || []).join('\n');
@@ -113,9 +107,6 @@ async function saveSettings() {
       showReason: document.getElementById('showReason').checked,
       filterReposted: document.getElementById('filterReposted').checked,
       maxJobAge: document.getElementById('maxJobAge').value ? parseInt(document.getElementById('maxJobAge').value) : null,
-      minSalary: document.getElementById('minSalary').value ? parseInt(document.getElementById('minSalary').value) : null,
-      maxSalary: document.getElementById('maxSalary').value ? parseInt(document.getElementById('maxSalary').value) : null,
-      hideNoSalary: document.getElementById('hideNoSalary').checked,
       excludeTitles: textareaToArray('excludeTitles'),
       excludeAnywhere: textareaToArray('excludeAnywhere'),
       excludeLocations: textareaToArray('excludeLocations'),
