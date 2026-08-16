@@ -3,19 +3,14 @@
 
 let filterSettings = null;
 let showFiltered = false;
-let profileData = null;
-let fieldMappings = {};
 let currentAdapter = null;
 
 // Recurring-resource references. Repeated init() calls (LinkedIn's SPA
 // navigation re-runs init() without a full page reload) must reuse or
 // cleanly replace these instead of accumulating duplicates - see
-// observeNewJobs(), observeEasyApplyModal(), and
-// observeEasyApplyButtons() below.
+// observeNewJobs() below.
 let jobListObserver = null;
 let jobListObserverTarget = null;
-let easyApplyModalObserver = null;
-let easyApplyButtonPollTimer = null;
 
 // ============================================
 // INITIALIZATION
@@ -33,8 +28,7 @@ async function init() {
   console.log(`Job Saver: Initializing for ${currentAdapter.name}`);
   
   await loadFilterSettings();
-  await loadAutofillData();
-  
+
   const isSearch = currentAdapter.isSearchResultsPage();
   const isDetails = currentAdapter.isJobDetailsPage();
   
@@ -52,11 +46,6 @@ async function init() {
     await updateJobSection();
   } else {
     removeJobSection();
-  }
-  
-  // Only init Easy Apply autofill for LinkedIn
-  if (SiteAdapters.getCurrentSite() === 'linkedin' && currentAdapter.hasEasyApply()) {
-    initEasyApplyAutofill();
   }
 }
 
@@ -77,16 +66,6 @@ async function loadFilterSettings() {
     };
   } catch (error) {
     console.error('Job Saver: Error loading filter settings:', error);
-  }
-}
-
-async function loadAutofillData() {
-  try {
-    const result = await chrome.storage.local.get(['profileData', 'fieldMappings']);
-    profileData = result.profileData || {};
-    fieldMappings = result.fieldMappings || {};
-  } catch (error) {
-    console.error('Job Saver: Error loading autofill data:', error);
   }
 }
 
@@ -715,312 +694,6 @@ function showNotification(message) {
     notification.style.opacity = '0';
     setTimeout(() => notification.remove(), 300);
   }, 3000);
-}
-
-// ============================================
-// EASY APPLY AUTOFILL (LinkedIn only)
-// ============================================
-
-function initEasyApplyAutofill() {
-  if (!profileData || !profileData.enableAutofill) {
-    console.log('Job Saver: Easy Apply autofill is disabled');
-    return;
-  }
-  
-  console.log('Job Saver: Initializing Easy Apply autofill');
-  
-  observeEasyApplyButtons();
-  observeEasyApplyModal();
-}
-
-// Self-rescheduling poll. Bounded to a single pending timer no matter
-// how many times this (or initEasyApplyAutofill) is called - each call
-// clears whatever was already pending before scheduling the next one,
-// so repeated init() calls cannot start parallel polling chains.
-function observeEasyApplyButtons() {
-  const easyApplyButtons = document.querySelectorAll('button[aria-label*="Easy Apply"]');
-
-  easyApplyButtons.forEach(button => {
-    if (!button.dataset.autofillReady) {
-      button.dataset.autofillReady = 'true';
-
-      const indicator = document.createElement('span');
-      indicator.textContent = ' 🤖';
-      indicator.title = 'Autofill enabled';
-      indicator.style.fontSize = '12px';
-      button.appendChild(indicator);
-    }
-  });
-
-  clearTimeout(easyApplyButtonPollTimer);
-  easyApplyButtonPollTimer = setTimeout(observeEasyApplyButtons, 2000);
-}
-
-// Idempotent: document.body never changes across SPA navigation, so a
-// simple existence check (rather than the target-tracking used by
-// observeNewJobs) is enough to guarantee at most one active instance.
-function observeEasyApplyModal() {
-  if (easyApplyModalObserver) return;
-
-  easyApplyModalObserver = new MutationObserver(() => {
-    const modal = document.querySelector('[role="dialog"]');
-
-    if (modal && !modal.dataset.autofillProcessed) {
-      modal.dataset.autofillProcessed = 'true';
-      console.log('Job Saver: Easy Apply modal detected');
-
-      setTimeout(() => fillEasyApplyForm(modal), 500);
-      watchForNextButton(modal);
-    }
-  });
-
-  easyApplyModalObserver.observe(document.body, { childList: true, subtree: true });
-}
-
-// Idempotent per modal: clicking "Next" on a multi-step Easy Apply
-// form resets modal.dataset.autofillProcessed, which makes
-// observeEasyApplyModal's still-active observer call this again for
-// the SAME modal - without this guard, each "Next" click would stack
-// another observer on top of the previous one for that modal.
-function watchForNextButton(modal) {
-  if (modal.dataset.nextButtonWatcherAttached) return;
-  modal.dataset.nextButtonWatcherAttached = 'true';
-
-  const observer = new MutationObserver(() => {
-    const nextButton = modal.querySelector('button[aria-label*="next" i], button[aria-label*="Continue" i]');
-    if (nextButton && !nextButton.dataset.watchedForAutofill) {
-      nextButton.dataset.watchedForAutofill = 'true';
-      nextButton.addEventListener('click', () => {
-        setTimeout(() => {
-          modal.dataset.autofillProcessed = 'false';
-          fillEasyApplyForm(modal);
-        }, 1000);
-      });
-    }
-  });
-
-  observer.observe(modal, { childList: true, subtree: true });
-}
-
-async function fillEasyApplyForm(modal) {
-  console.log('Job Saver: Attempting to fill Easy Apply form');
-  
-  const inputs = modal.querySelectorAll('input, select, textarea');
-  let filledCount = 0;
-  let unknownFields = [];
-  
-  inputs.forEach(input => {
-    const filled = fillField(input);
-    if (filled === true) {
-      filledCount++;
-    } else if (filled === 'unknown') {
-      unknownFields.push(input);
-    }
-  });
-  
-  console.log(`Job Saver: Filled ${filledCount} fields`);
-  
-  if (unknownFields.length > 0) {
-    showUnknownFieldsUI(unknownFields, modal);
-  }
-  
-  if (filledCount > 0) {
-    showNotification(`✓ Auto-filled ${filledCount} field${filledCount !== 1 ? 's' : ''}`);
-  }
-}
-
-function fillField(input) {
-  if (input.type === 'hidden' || input.disabled) {
-    return false;
-  }
-  
-  const label = getFieldLabel(input);
-  const labelLower = label.toLowerCase();
-  
-  if (fieldMappings[label]) {
-    const mapping = fieldMappings[label];
-    
-    if (mapping.startsWith('profile:')) {
-      const profileKey = mapping.replace('profile:', '');
-      fillWithProfileData(input, profileKey);
-    } else {
-      fillWithCustomText(input, mapping);
-    }
-    return true;
-  }
-  
-  const isGenericQuestion = !labelLower.includes('startup') && 
-                           !labelLower.includes('recruiting') &&
-                           !labelLower.includes('technical') &&
-                           !labelLower.includes('with ') &&
-                           !labelLower.includes('in ');
-  
-  if (isGenericQuestion) {
-    if (labelLower.includes('first name') || labelLower === 'first') {
-      fillWithProfileData(input, 'firstName');
-      return true;
-    }
-    
-    if (labelLower.includes('last name') || labelLower === 'last') {
-      fillWithProfileData(input, 'lastName');
-      return true;
-    }
-    
-    if (labelLower.includes('email')) {
-      fillWithProfileData(input, 'email');
-      return true;
-    }
-    
-    if (labelLower.includes('phone') || labelLower.includes('mobile')) {
-      fillWithProfileData(input, 'phone');
-      return true;
-    }
-  }
-  
-  return 'unknown';
-}
-
-function getFieldLabel(input) {
-  if (input.id) {
-    const label = document.querySelector(`label[for="${input.id}"]`);
-    if (label) return label.textContent.trim();
-  }
-  
-  if (input.getAttribute('aria-label')) {
-    return input.getAttribute('aria-label').trim();
-  }
-  
-  if (input.placeholder) {
-    return input.placeholder.trim();
-  }
-  
-  return input.name || 'unknown field';
-}
-
-function fillWithProfileData(input, profileKey) {
-  const value = profileData[profileKey];
-  
-  if (!value) {
-    return;
-  }
-  
-  if (input.tagName === 'SELECT') {
-    const options = Array.from(input.options);
-    const match = options.find(opt => 
-      opt.value === value || 
-      opt.textContent.toLowerCase().includes(value.toLowerCase())
-    );
-    if (match) {
-      input.value = match.value;
-      input.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-  } else {
-    input.value = value;
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-    input.dispatchEvent(new Event('change', { bubbles: true }));
-  }
-}
-
-function fillWithCustomText(input, text) {
-  input.value = text;
-  input.dispatchEvent(new Event('input', { bubbles: true }));
-  input.dispatchEvent(new Event('change', { bubbles: true }));
-}
-
-function showUnknownFieldsUI(unknownFields, modal) {
-  saveUnknownFields(unknownFields);
-  
-  const existing = document.getElementById('job-saver-unknown-fields');
-  if (existing) existing.remove();
-  
-  const container = document.createElement('div');
-  container.id = 'job-saver-unknown-fields';
-  container.style.cssText = `
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: #fff3cd;
-    border: 2px solid #ffc107;
-    border-radius: 8px;
-    padding: 15px;
-    max-width: 400px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    z-index: 10000;
-  `;
-  
-  const title = document.createElement('div');
-  title.textContent = '🤖 New Fields Detected';
-  title.style.cssText = 'font-weight: 600; margin-bottom: 10px; font-size: 14px;';
-  
-  const description = document.createElement('div');
-  description.textContent = `Found ${unknownFields.length} new field${unknownFields.length !== 1 ? 's' : ''}. Fill them manually this time, then teach the extension in settings!`;
-  description.style.cssText = 'font-size: 12px; color: #666; margin-bottom: 10px;';
-  
-  const buttonGroup = document.createElement('div');
-  buttonGroup.style.cssText = 'display: flex; gap: 8px;';
-  
-  const teachBtn = document.createElement('button');
-  teachBtn.textContent = '🎓 Open Settings';
-  teachBtn.style.cssText = `
-    background: #0a66c2;
-    color: white;
-    border: none;
-    padding: 8px 14px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 600;
-    flex: 1;
-  `;
-  teachBtn.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ action: 'openOptions' });
-    container.remove();
-  });
-  
-  const closeBtn = document.createElement('button');
-  closeBtn.textContent = 'Got it';
-  closeBtn.style.cssText = `
-    background: #666;
-    color: white;
-    border: none;
-    padding: 8px 14px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 12px;
-    flex: 1;
-  `;
-  closeBtn.addEventListener('click', () => container.remove());
-  
-  buttonGroup.appendChild(teachBtn);
-  buttonGroup.appendChild(closeBtn);
-  
-  container.appendChild(title);
-  container.appendChild(description);
-  container.appendChild(buttonGroup);
-  
-  document.body.appendChild(container);
-  
-  setTimeout(() => {
-    if (container.parentElement) container.remove();
-  }, 15000);
-}
-
-async function saveUnknownFields(unknownFields) {
-  try {
-    const result = await chrome.storage.local.get(['unknownFields']);
-    const existing = result.unknownFields || [];
-    
-    unknownFields.forEach(field => {
-      const label = getFieldLabel(field);
-      if (!existing.includes(label)) {
-        existing.push(label);
-      }
-    });
-    
-    await chrome.storage.local.set({ unknownFields: existing });
-  } catch (error) {
-    console.error('Job Saver: Error saving unknown fields:', error);
-  }
 }
 
 // ============================================

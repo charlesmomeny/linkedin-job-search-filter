@@ -177,12 +177,8 @@ const SiteAdapters = {
       
       match = url.match(/currentJobId=(\d+)/);
       if (match) return match[1];
-      
-      return null;
-    },
 
-    hasEasyApply() {
-      return true; // LinkedIn has Easy Apply
+      return null;
     }
   }
 };

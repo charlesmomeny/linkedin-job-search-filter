@@ -10,7 +10,6 @@ This Chrome extension allows you to save, filter, and manage job listings from L
 ✅ **Filter Search Results**: Hide jobs that don't match your criteria
 ✅ **Export to CSV**: Download all your saved jobs as a spreadsheet
 ✅ **Duplicate Detection**: Get notified when you try to save similar jobs
-✅ **Easy Apply Autofill** (LinkedIn only): Automatically fill application forms
 
 ## Installation
 
