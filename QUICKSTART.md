@@ -5,21 +5,7 @@
 ### 1. Create Extension Folder
 Create a new folder called `multi-site-job-saver` and move all the downloaded files into it.
 
-### 2. Create an Icon
-You need a 48x48 pixel icon file named `icon.png`. You have two options:
-
-**Option A - Use a placeholder:**
-1. Go to https://via.placeholder.com/48/0a66c2/ffffff?text=JS
-2. Right-click → Save image as → `icon.png`
-3. Save in your extension folder
-
-**Option B - Create a simple one:**
-1. Open any image editor (Paint, Photoshop, GIMP, etc.)
-2. Create a 48x48 pixel image
-3. Add text "JS" or a simple design
-4. Save as `icon.png`
-
-### 3. Load Extension
+### 2. Load Extension
 1. Open Chrome
 2. Go to `chrome://extensions/`
 3. Enable "Developer mode" (top right toggle)
@@ -80,7 +66,7 @@ Required files:
 - [ ] options.js
 - [ ] background.js
 - [ ] styles.css
-- [ ] icon.png (you need to create this)
+- [ ] icons/ (icon-16.png, icon-32.png, icon-48.png, icon-128.png)
 
 Documentation files (optional but helpful):
 - [ ] README.md

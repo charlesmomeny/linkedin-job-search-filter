@@ -40,7 +40,7 @@ multi-site-job-saver/
 ├── options.js                # Settings logic
 ├── background.js             # Background service worker
 ├── styles.css                # Button styles
-└── icon.png                  # Extension icon (you'll need to create this)
+└── icons/                    # Extension icons (icon-16/32/48/128.png, icon-master.png)
 ```
 
 ## Setup Instructions
@@ -56,11 +56,7 @@ to:
 <script src="popup-updated.js"></script>
 ```
 
-### Step 2: Create an Icon
-
-Create a 48x48 pixel icon and save it as `icon.png` in the extension folder. You can use any image editor or generate one online.
-
-### Step 3: Test on Each Site
+### Step 2: Test on Each Site
 
 #### Testing on LinkedIn
 1. Visit https://www.linkedin.com/jobs/search/
