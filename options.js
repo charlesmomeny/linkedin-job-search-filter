@@ -28,8 +28,6 @@ async function loadSettings() {
     const result = await chrome.storage.local.get(['filterSettings']);
     const settings = result.filterSettings || defaultSettings;
 
-    console.log('Loading settings:', settings);
-
     // Populate filter form fields
     document.getElementById('enableFilters').checked = settings.enableFilters;
     document.getElementById('hideFiltered').checked = settings.hideFiltered;
@@ -43,8 +41,6 @@ async function loadSettings() {
     document.getElementById('includeTitles').value = (settings.includeTitles || []).join('\n');
     document.getElementById('includeLocations').value = (settings.includeLocations || []).join('\n');
 
-    console.log('Settings loaded successfully');
-
   } catch (error) {
     console.error('Error loading settings:', error);
     showStatus('Failed to load settings', 'error');
@@ -53,8 +49,6 @@ async function loadSettings() {
 
 async function saveSettings() {
   try {
-    console.log('Saving settings...');
-    
     // Get filter values from form
     const settings = {
       enableFilters: document.getElementById('enableFilters').checked,
@@ -68,13 +62,10 @@ async function saveSettings() {
       includeTitles: textareaToArray('includeTitles'),
       includeLocations: textareaToArray('includeLocations')
     };
-    
-    console.log('Settings to save:', settings);
 
     // Save to storage
     await chrome.storage.local.set({ filterSettings: settings });
 
-    console.log('Settings saved successfully!');
     showStatus('✓ Settings saved successfully! Refresh LinkedIn to apply changes.', 'success');
     
   } catch (error) {

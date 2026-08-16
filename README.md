@@ -7,9 +7,9 @@ This Chrome extension allows you to save, filter, and manage job listings from L
 ## Features
 
 ✅ **Save Jobs**: Save jobs from LinkedIn with one click
-✅ **Filter Search Results**: Hide jobs that don't match your criteria
-✅ **Export to CSV**: Download all your saved jobs as a spreadsheet
-✅ **Duplicate Detection**: Get notified when you try to save similar jobs
+✅ **Filter Search Results**: Hide jobs that don't match your criteria (title/location keywords, reposted listings, maximum posting age)
+✅ **Export to CSV**: Download all your saved jobs as a spreadsheet, and re-import them later
+✅ **Duplicate Detection**: Saving or importing a job you've already saved is recognized and skipped (exact match, not fuzzy matching)
 
 ## Installation
 
@@ -31,32 +31,27 @@ This Chrome extension allows you to save, filter, and manage job listings from L
 
 ```
 multi-site-job-saver/
-├── manifest.json              # Extension configuration
-├── site-adapters.js          # Site-specific logic for each platform
-├── content-universal.js      # Main content script
-├── popup.html                # Saved jobs viewer
-├── popup-updated.js          # Popup logic (renamed from popup.js)
-├── options.html              # Settings page
-├── options.js                # Settings logic
-├── background.js             # Background service worker
-├── styles.css                # Button styles
-└── icons/                    # Extension icons (icon-16/32/48/128.png, icon-master.png)
+├── manifest.json          # Extension configuration
+├── site-adapters.js       # LinkedIn-specific DOM/extraction logic
+├── content-universal.js   # Main content script (init, filtering, saving)
+├── job-identity.js        # Saved-job identity/deduplication logic
+├── keyword-matching.js    # Safe literal keyword matching for filters
+├── lifecycle-utils.js     # Observer/timer lifecycle helpers
+├── job-freshness.js       # Reposted / posting-age detection
+├── csv-utils.js           # CSV parsing for popup import
+├── url-utils.js           # Job URL scheme validation
+├── popup.html             # Saved jobs viewer
+├── popup.js               # Popup logic (list, export/import, delete)
+├── options.html           # Settings page
+├── options.js             # Settings logic
+├── background.js          # Background service worker
+├── styles.css             # Button styles
+└── icons/                 # Extension icons (icon-16/32/48/128.png, icon-master.png)
 ```
 
 ## Setup Instructions
 
-### Step 1: Update File References
-
-In `popup.html`, change:
-```html
-<script src="popup.js"></script>
-```
-to:
-```html
-<script src="popup-updated.js"></script>
-```
-
-### Step 2: Test on Each Site
+### Test the Extension
 
 #### Testing on LinkedIn
 1. Visit https://www.linkedin.com/jobs/search/
@@ -72,7 +67,7 @@ to:
 LinkedIn's HTML structure changes frequently, so the adapter's selectors are best-effort and may occasionally need updating. If the extension doesn't work correctly, you may need to:
 
 1. **Inspect the HTML** of the job pages using Chrome DevTools (F12)
-2. **Update the selectors** in `site-adapters.js` for the specific site
+2. **Update the selectors** in `site-adapters.js` for LinkedIn
 3. **Look for**:
    - Job card elements in search results
    - Job title, company, and location elements
@@ -163,30 +158,15 @@ The extension logs helpful information to the browser console. To view logs:
 ### Debugging Tips
 
 1. **Check the manifest**: Ensure all URLs are correct
-2. **Verify permissions**: The extension needs access to all three sites
+2. **Verify permissions**: The extension needs access to linkedin.com
 3. **Reload the extension**: After making changes, click the reload icon in chrome://extensions/
 4. **Clear storage**: If things seem broken, clear the extension's storage:
    ```javascript
-   // In browser console on any of the job sites:
+   // In browser console on linkedin.com:
    chrome.storage.local.clear()
    ```
 
 ## Advanced Configuration
-
-### Adding More Job Sites
-
-To add support for additional job sites:
-
-1. **Add the domain** to `host_permissions` in `manifest.json`
-2. **Add a new adapter** in `site-adapters.js`
-3. **Implement required methods**:
-   - `name`, `color`
-   - `isSearchResultsPage()`
-   - `isJobDetailsPage()`
-   - `getJobCards()`
-   - `extractJobData()`
-   - `extractJobDataFromCard()`
-   - `extractJobId()`
 
 ### Filter Settings
 
@@ -195,6 +175,8 @@ Configure filters in the extension options:
 - **Include Keywords**: Only show jobs with these words
 - **Exclude Locations**: Hide jobs in certain locations
 - **Include Locations**: Highlight jobs in preferred locations
+- **Reposted Jobs**: Hide listings LinkedIn shows as reposted
+- **Maximum Job Age**: Hide jobs posted more than a set number of days ago
 
 ## Support
 
@@ -208,10 +190,9 @@ If you encounter issues:
 ## Future Enhancements
 
 Possible improvements:
-- Auto-detect more job sites
 - Sync saved jobs across devices
 - Integration with job tracking tools
-- Advanced filtering (salary, remote/hybrid, etc.)
+- Advanced filtering (remote/hybrid, etc.)
 - Job application tracking
 
 ## License

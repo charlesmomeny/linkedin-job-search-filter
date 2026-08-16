@@ -279,10 +279,6 @@ linkedin: {
     // URL pattern: /jobs/view/123456
     const match = url.match(/\/jobs\/view\/(\d+)/);
     return match ? match[1] : null;
-  },
-
-  hasEasyApply() {
-    return true;
   }
 }
 ```

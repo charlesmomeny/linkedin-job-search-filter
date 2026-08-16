@@ -60,8 +60,14 @@ Required files:
 - [ ] manifest.json
 - [ ] site-adapters.js
 - [ ] content-universal.js
+- [ ] job-identity.js
+- [ ] keyword-matching.js
+- [ ] lifecycle-utils.js
+- [ ] job-freshness.js
+- [ ] csv-utils.js
+- [ ] url-utils.js
 - [ ] popup.html
-- [ ] popup-updated.js
+- [ ] popup.js
 - [ ] options.html
 - [ ] options.js
 - [ ] background.js

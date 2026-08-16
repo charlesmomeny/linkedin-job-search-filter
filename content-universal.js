@@ -31,9 +31,7 @@ async function init() {
 
   const isSearch = currentAdapter.isSearchResultsPage();
   const isDetails = currentAdapter.isJobDetailsPage();
-  
-  console.log(`Job Saver: isSearch=${isSearch}, isDetails=${isDetails}`);
-  
+
   if (isSearch) {
     initSearchResultsFiltering();
   }
@@ -169,7 +167,6 @@ function addFilterToggleButton() {
   toggleBtn.addEventListener('click', () => {
     showFiltered = !showFiltered;
     toggleBtn.textContent = showFiltered ? '👁️ Hide Filtered' : '👁️ Show Filtered';
-    console.log('Job Saver: Toggle clicked, showFiltered =', showFiltered);
     applyFiltersToSearchResults();
   });
   
@@ -220,8 +217,6 @@ function addFilterToggleButton() {
 }
 
 function applyFiltersToSearchResults(retryCount = 0) {
-  console.log('Job Saver: Applying filters');
-  
   const jobCards = currentAdapter.getJobCards();
   console.log('Job Saver: Found', jobCards.length, 'job cards');
   
@@ -249,16 +244,13 @@ function applyFiltersToSearchResults(retryCount = 0) {
       filteredCount++;
       
       if (showFiltered) {
-        console.log('Job Saver: Showing filtered job (dimmed)');
         card.style.opacity = '0.4';
         card.style.filter = 'grayscale(70%)';
         card.style.display = ''; // Reset display
       } else {
         if (filterSettings.hideFiltered) {
-          console.log('Job Saver: Hiding filtered job completely');
           card.style.setProperty('display', 'none', 'important');
         } else {
-          console.log('Job Saver: Dimming filtered job');
           card.style.opacity = '0.3';
           card.style.filter = 'grayscale(100%)';
           card.style.display = ''; // Reset display
@@ -299,9 +291,7 @@ function evaluateJobCard(card) {
   const jobData = currentAdapter.extractJobDataFromCard(card);
   const title = jobData.title.toLowerCase();
   const fullText = jobData.fullText;
-  
-  console.log('Job Saver: Evaluating:', { title: title.substring(0, 50) });
-  
+
   // Check exclude filters for title
   for (const keyword of filterSettings.excludeTitles) {
     if (window.KeywordMatching.containsKeyword(title, keyword)) {

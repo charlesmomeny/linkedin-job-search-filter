@@ -86,7 +86,7 @@ function createJobCard(dedupeKey, job) {
   // already contain anything. Never turn an unsafe/invalid value into
   // an actionable link - render the title as plain text instead.
   const titleHtml = window.UrlUtils.isSafeJobUrl(job.url)
-    ? `<a href="${escapeHtml(job.url)}" target="_blank" class="job-title">${escapeHtml(job.title || 'Untitled Job')}</a>`
+    ? `<a href="${escapeHtml(job.url)}" target="_blank" rel="noopener noreferrer" class="job-title">${escapeHtml(job.title || 'Untitled Job')}</a>`
     : `<span class="job-title" title="No valid link available for this job">${escapeHtml(job.title || 'Untitled Job')}</span>`;
 
   return `
