@@ -11,9 +11,62 @@ This Chrome extension allows you to save, filter, and manage job listings from L
 ✅ **Export to CSV**: Download all your saved jobs as a spreadsheet, and re-import them later
 ✅ **Duplicate Detection**: Saving or importing a job you've already saved is recognized and skipped (exact match, not fuzzy matching)
 
+## Privacy & Data
+
+Everything this extension does happens locally in your browser. It makes
+no network requests of any kind - there is no analytics, telemetry, or
+server component, and nothing you save or configure is ever sent
+anywhere.
+
+**What's stored**, in your browser's local extension storage
+(`chrome.storage.local`), never synced or exported unless you explicitly
+click "Export to CSV":
+- `savedJobs` - the jobs you've clicked "Save Job" on (title, company,
+  location, URL, source, date saved)
+- `filterSettings` - your keyword/location/repost/age filter preferences
+
+**Historical data note**: an earlier version of this extension included
+an Easy Apply autofill feature that stored profile information locally
+(name, contact details, and EEO fields like veteran/disability status,
+gender, and race) under separate storage keys. That feature has been
+removed and none of that data is read, displayed, or used by the current
+code. If you used that older version, those values may still be sitting
+untouched in your local browser storage - they were never sent anywhere
+then either, but if you'd like to remove them, open a LinkedIn tab,
+press F12, and run this in the console:
+```javascript
+chrome.storage.local.remove(['profileData', 'fieldMappings', 'unknownFields'])
+```
+This only clears the old profile data - it leaves your saved jobs and
+filter settings untouched.
+
+## Known Limitations
+
+- **LinkedIn only.** Earlier versions supported additional sites; that
+  support has been removed and is not currently planned to return.
+- **Best-effort DOM compatibility.** LinkedIn changes its page structure
+  without notice, and the selectors this extension relies on can break
+  as a result. See [Site Adapter May Need Adjustment](#site-adapter-may-need-adjustment)
+  below.
+- **Exact-match duplicate detection only.** There is no fuzzy/"similar
+  job" matching - two listings are only recognized as duplicates when
+  their source and job ID (or title/company/location) match exactly.
+- **Reposted/age filtering depends on LinkedIn showing that information
+  as visible text on the job card.** If LinkedIn changes how or whether
+  it displays a "Reposted" label or a posting date, these filters may
+  stop having any effect until the detection logic is updated.
+- **No sync.** Saved jobs and settings live only in the local browser
+  profile they were saved in; nothing is backed up automatically (use
+  Export to CSV for that).
+
 ## Installation
 
-1. **Download the extension files** to a folder on your computer
+This extension is not published on the Chrome Web Store - it's loaded
+as an unpacked extension in Developer Mode. You'll need Chrome, Brave,
+or another Chromium-based browser.
+
+1. **Download the extension files** to a folder on your computer (clone
+   this repository, or download it as a ZIP and extract it)
 
 2. **Open Chrome Extensions**:
    - Go to `chrome://extensions/`
@@ -197,4 +250,6 @@ Possible improvements:
 
 ## License
 
-This is a personal project. Modify and use as needed!
+No license has been chosen yet - all rights are reserved by default
+under standard copyright until one is added. This section will be
+updated once a license is selected.

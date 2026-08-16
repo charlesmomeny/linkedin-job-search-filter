@@ -1,14 +1,13 @@
 {
   "manifest_version": 3,
   "name": "Multi-Site Job Saver",
-  "version": "3.0",
+  "version": "4.0",
   "description": "Save jobs from LinkedIn to your local database with filtering",
   "permissions": [
-    "storage",
-    "activeTab"
+    "storage"
   ],
   "host_permissions": [
-    "https://www.linkedin.com/*"
+    "https://www.linkedin.com/jobs/*"
   ],
   "action": {
     "default_popup": "popup.html",
