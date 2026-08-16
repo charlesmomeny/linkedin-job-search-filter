@@ -116,15 +116,148 @@ function ensureExtensionPanel() {
       gap: 8px;
       min-width: 200px;
     `;
+
+    const header = document.createElement('div');
+    header.id = 'job-saver-panel-header';
+    header.textContent = '🎯 LinkedIn Job Search Filter';
+    header.style.cssText = `
+      font-weight: 600;
+      font-size: 14px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #e5e5e5;
+      cursor: grab;
+      user-select: none;
+      -webkit-user-select: none;
+    `;
+    panel.appendChild(header);
+    initPanelDragging(panel, header);
+
     document.body.appendChild(panel);
+    restorePanelPosition(panel);
   }
   return panel;
 }
 
+// Only the always-present header counts as "empty" - once every content
+// section (filter toggle, current-job) has been removed, the panel
+// itself should disappear too, same as before the header existed.
 function removePanelIfEmpty() {
   const panel = document.getElementById('job-saver-panel');
-  if (panel && panel.children.length === 0) {
+  if (panel && panel.children.length <= 1) {
     panel.remove();
+  }
+}
+
+// ============================================
+// DRAGGABLE PANEL
+//
+// Vanilla pointer-event dragging, started only from the header (never
+// from a button elsewhere in the panel, so no click handler is ever
+// hijacked into a drag). Position is clamped with PanelDragUtils so the
+// panel can never be dragged off-screen, and persisted to
+// chrome.storage.local so it's restored on future LinkedIn visits.
+// ============================================
+
+const PANEL_POSITION_STORAGE_KEY = 'panelPosition';
+
+function initPanelDragging(panel, handle) {
+  let dragging = false;
+  let startX = 0;
+  let startY = 0;
+  let startLeft = 0;
+  let startTop = 0;
+
+  handle.addEventListener('pointerdown', (event) => {
+    // Left button (or primary touch point) only.
+    if (event.button !== undefined && event.button !== 0) return;
+
+    const rect = panel.getBoundingClientRect();
+    dragging = true;
+    startX = event.clientX;
+    startY = event.clientY;
+    startLeft = rect.left;
+    startTop = rect.top;
+
+    // Switch from the default top/right positioning to explicit
+    // left/top so the panel can be moved freely.
+    panel.style.left = `${startLeft}px`;
+    panel.style.top = `${startTop}px`;
+    panel.style.right = 'auto';
+
+    handle.style.cursor = 'grabbing';
+    handle.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  });
+
+  handle.addEventListener('pointermove', (event) => {
+    if (!dragging) return;
+
+    const rawLeft = startLeft + (event.clientX - startX);
+    const rawTop = startTop + (event.clientY - startY);
+    const rect = panel.getBoundingClientRect();
+
+    const { left, top } = window.PanelDragUtils.clampPosition({
+      left: rawLeft,
+      top: rawTop,
+      width: rect.width,
+      height: rect.height,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+    });
+
+    panel.style.left = `${left}px`;
+    panel.style.top = `${top}px`;
+  });
+
+  const endDrag = (event) => {
+    if (!dragging) return;
+    dragging = false;
+    handle.style.cursor = 'grab';
+    if (handle.hasPointerCapture(event.pointerId)) {
+      handle.releasePointerCapture(event.pointerId);
+    }
+    savePanelPosition(parseInt(panel.style.left, 10), parseInt(panel.style.top, 10));
+  };
+
+  handle.addEventListener('pointerup', endDrag);
+  handle.addEventListener('pointercancel', endDrag);
+}
+
+async function savePanelPosition(left, top) {
+  try {
+    await chrome.storage.local.set({ [PANEL_POSITION_STORAGE_KEY]: { left, top } });
+  } catch (error) {
+    console.error('Job Saver: Error saving panel position:', error);
+  }
+}
+
+async function restorePanelPosition(panel) {
+  try {
+    const result = await chrome.storage.local.get([PANEL_POSITION_STORAGE_KEY]);
+    const saved = result[PANEL_POSITION_STORAGE_KEY];
+    if (!saved || typeof saved.left !== 'number' || typeof saved.top !== 'number') return;
+
+    // The panel may have been removed/recreated by the time this
+    // resolves (e.g. fast SPA navigation); re-fetch rather than trust
+    // the closed-over reference.
+    const currentPanel = document.getElementById('job-saver-panel');
+    if (!currentPanel) return;
+
+    const rect = currentPanel.getBoundingClientRect();
+    const { left, top } = window.PanelDragUtils.clampPosition({
+      left: saved.left,
+      top: saved.top,
+      width: rect.width,
+      height: rect.height,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+    });
+
+    currentPanel.style.left = `${left}px`;
+    currentPanel.style.top = `${top}px`;
+    currentPanel.style.right = 'auto';
+  } catch (error) {
+    console.error('Job Saver: Error restoring panel position:', error);
   }
 }
 
@@ -141,10 +274,6 @@ function addFilterToggleButton() {
     gap: 8px;
   `;
 
-  const title = document.createElement('div');
-  title.textContent = `🎯 ${currentAdapter.name} Filters`;
-  title.style.cssText = 'font-weight: 600; font-size: 14px; margin-bottom: 4px;';
-  
   const stats = document.createElement('div');
   stats.id = 'filter-stats';
   stats.style.cssText = 'font-size: 12px; color: #666;';
@@ -206,7 +335,6 @@ function addFilterToggleButton() {
     chrome.runtime.sendMessage({ action: 'openOptions' });
   });
   
-  toggleContainer.appendChild(title);
   toggleContainer.appendChild(stats);
   toggleContainer.appendChild(toggleBtn);
   toggleContainer.appendChild(viewSavedBtn);

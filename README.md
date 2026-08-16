@@ -1,15 +1,79 @@
-# Multi-Site Job Saver Extension
+# LinkedIn Job Search Filter
 
-## Overview
+Spend less time scrolling through jobs you already know you don't want.
 
-This Chrome extension allows you to save, filter, and manage job listings from LinkedIn.
+**Free · No account · No tracking · Data stays local**
 
-## Features
+A free Chrome/Brave extension for LinkedIn job search. It filters out
+titles and terms you don't want, lets you prefer the titles and
+locations you do want, hides reposted and stale listings, and saves
+jobs locally with one click - all running entirely in your own browser.
 
-✅ **Save Jobs**: Save jobs from LinkedIn with one click
-✅ **Filter Search Results**: Hide jobs that don't match your criteria (title/location keywords, reposted listings, maximum posting age)
-✅ **Export to CSV**: Download all your saved jobs as a spreadsheet, and re-import them later
-✅ **Duplicate Detection**: Saving or importing a job you've already saved is recognized and skipped (exact match, not fuzzy matching)
+*Independent project; not affiliated with or endorsed by LinkedIn.*
+
+## Why I built it
+
+LinkedIn's own search filters only go so far - reposted listings and
+titles I'd already ruled out kept eating time I wanted to spend on jobs
+that actually fit. This started as a script for my own job search and
+turned into something worth sharing with other job seekers going
+through the same scroll.
+
+## What it does
+
+✅ **Filter unwanted titles** - hide listings whose title matches terms you don't want
+✅ **Filter unwanted terms anywhere** - not just the title; company, location, and description text too
+✅ **Prefer what you want** - include/highlight specific titles and locations
+✅ **Filter reposted jobs** - hide listings LinkedIn shows as reposted
+✅ **Filter by age** - hide jobs older than a maximum posting age you choose
+✅ **Save jobs locally, one click** - with CSV export and re-import
+✅ **Duplicate detection** - saving or importing a job you've already saved is recognized and skipped
+
+**No account. No analytics or tracking of any kind. Your data never
+leaves your browser.** See [Privacy & Data](#privacy--data) below for
+exactly what's stored and where.
+
+**LinkedIn only**, and compatibility is best-effort - LinkedIn changes
+its page structure without notice, and the selectors this extension
+relies on can break as a result. See
+[Known Limitations](#known-limitations).
+
+## Screenshots
+
+> Screenshots are pending - see [`docs/images/README.md`](docs/images/README.md)
+> for exactly what to capture and how. Automated capture wasn't used
+> here since a real screenshot means either a live, logged-in LinkedIn
+> session (personal data risk) or driving Chrome's native "Load
+> unpacked" file picker (not reachable by browser automation) - both
+> better done by hand, once, by whoever's LinkedIn account it is.
+
+![LinkedIn search results with the draggable filter panel](docs/images/linkedin-search-panel.png)
+*The floating panel on a LinkedIn job search page - draggable by its header, out of the way of LinkedIn Chat or anything else.*
+
+![Settings page](docs/images/settings-page.png)
+*The settings page, where filters are configured.*
+
+## Installation
+
+This extension is not published on the Chrome Web Store - it's loaded
+as an unpacked extension in Developer Mode. You'll need Chrome, Brave,
+or another Chromium-based browser.
+
+### Option 1: Download the ZIP (recommended)
+
+1. Download the latest release ZIP from the
+   [Releases page](https://github.com/charlesmomeny/linkedin-job-search-filter/releases)
+2. Unzip it to a folder on your computer
+3. Go to `chrome://extensions/`
+4. Enable **Developer mode** (toggle, top right)
+5. Click **Load unpacked** and select the unzipped folder
+6. Confirm you see "LinkedIn Job Search Filter" in your extensions list
+
+### Option 2: Clone with Git (for developers)
+
+1. `git clone https://github.com/charlesmomeny/linkedin-job-search-filter.git`
+2. Go to `chrome://extensions/`, enable **Developer mode**, click
+   **Load unpacked**, and select the cloned folder
 
 ## Privacy & Data
 
@@ -24,6 +88,8 @@ click "Export to CSV":
 - `savedJobs` - the jobs you've clicked "Save Job" on (title, company,
   location, URL, source, date saved)
 - `filterSettings` - your keyword/location/repost/age filter preferences
+- `panelPosition` - where you last dragged the floating panel to, so it
+  stays out of your way on future visits
 
 **Historical data note**: an earlier version of this extension included
 an Easy Apply autofill feature that stored profile information locally
@@ -59,34 +125,14 @@ filter settings untouched.
   profile they were saved in; nothing is backed up automatically (use
   Export to CSV for that).
 
-## Installation
-
-This extension is not published on the Chrome Web Store - it's loaded
-as an unpacked extension in Developer Mode. You'll need Chrome, Brave,
-or another Chromium-based browser.
-
-1. **Download the extension files** to a folder on your computer (clone
-   this repository, or download it as a ZIP and extract it)
-
-2. **Open Chrome Extensions**:
-   - Go to `chrome://extensions/`
-   - Enable "Developer mode" (toggle in top right)
-
-3. **Load the extension**:
-   - Click "Load unpacked"
-   - Select the folder containing the extension files
-
-4. **Verify installation**:
-   - You should see "Multi-Site Job Saver" in your extensions list
-   - The extension icon should appear in your Chrome toolbar
-
 ## File Structure
 
 ```
-multi-site-job-saver/
+linkedin-job-search-filter/
 ├── manifest.json          # Extension configuration
 ├── site-adapters.js       # LinkedIn-specific DOM/extraction logic
-├── content-universal.js   # Main content script (init, filtering, saving)
+├── content-universal.js   # Main content script (init, filtering, saving, panel/drag)
+├── panel-drag-utils.js    # Pure clamping math behind the draggable panel
 ├── job-identity.js        # Saved-job identity/deduplication logic
 ├── keyword-matching.js    # Safe literal keyword matching for filters
 ├── lifecycle-utils.js     # Observer/timer lifecycle helpers
@@ -108,7 +154,7 @@ multi-site-job-saver/
 
 #### Testing on LinkedIn
 1. Visit https://www.linkedin.com/jobs/search/
-2. You should see a "🎯 LinkedIn Filters" panel on the right side
+2. You should see a "🎯 LinkedIn Job Search Filter" panel on the right side - drag it by the header if it's in the way of LinkedIn Chat or anything else
 3. Open a job listing
 4. Click the "💾 Save Job" button
 5. Check that the job appears in the extension popup
@@ -184,6 +230,7 @@ getJobCards() {
 
 - [ ] Extension installs without errors
 - [ ] Filter panel appears on LinkedIn job search
+- [ ] Panel can be dragged by its header and stays within the viewport
 - [ ] Save button appears on LinkedIn job detail pages
 - [ ] Jobs save successfully on LinkedIn
 - [ ] Saved jobs appear in popup with correct source badges

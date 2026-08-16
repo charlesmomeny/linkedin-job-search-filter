@@ -2,24 +2,29 @@
 
 ## Installation (5 minutes)
 
-### 1. Create Extension Folder
-Create a new folder called `multi-site-job-saver` and move all the downloaded files into it.
+### 1. Get the extension files
+
+Download the latest release ZIP from the
+[Releases page](https://github.com/charlesmomeny/linkedin-job-search-filter/releases)
+and unzip it - or clone the repository if you'd rather work from Git.
+Either way you'll end up with a `linkedin-job-search-filter` folder
+containing the extension files.
 
 ### 2. Load Extension
 1. Open Chrome
 2. Go to `chrome://extensions/`
 3. Enable "Developer mode" (top right toggle)
 4. Click "Load unpacked"
-5. Select your `multi-site-job-saver` folder
+5. Select your `linkedin-job-search-filter` folder
 6. Click "Select Folder"
 
-✅ You should now see "Multi-Site Job Saver" in your extensions list!
+✅ You should now see "LinkedIn Job Search Filter" in your extensions list!
 
 ## First Test (2 minutes)
 
-### Test on LinkedIn (easiest to verify)
+### Test on LinkedIn
 1. Go to https://www.linkedin.com/jobs/search/
-2. Look for a floating panel on the right side that says "🎯 LinkedIn Filters"
+2. Look for a floating panel on the right side that says "🎯 LinkedIn Job Search Filter" - you can drag it by that header if it's in the way of anything
 3. Open any job listing
 4. Look for the "💾 Save Job" button (floating on right side)
 5. Click it
@@ -38,12 +43,12 @@ Create a new folder called `multi-site-job-saver` and move all the downloaded fi
 ## Common Issues
 
 ### "Extension does not appear to work"
-- Make sure you're on the /jobs section of the site
+- Make sure you're on the /jobs section of LinkedIn
 - Check the browser console (F12) for error messages
 - Verify the extension is enabled in chrome://extensions/
 
 ### "Save button doesn't extract job details"
-- The site's HTML structure might be different than expected
+- LinkedIn's HTML structure might have changed
 - See SELECTOR_GUIDE.md for how to update selectors
 - Open browser console to see what's being extracted
 
@@ -60,6 +65,7 @@ Required files:
 - [ ] manifest.json
 - [ ] site-adapters.js
 - [ ] content-universal.js
+- [ ] panel-drag-utils.js
 - [ ] job-identity.js
 - [ ] keyword-matching.js
 - [ ] lifecycle-utils.js

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Multi-Site Job Saver",
-  "version": "4.0",
-  "description": "Save jobs from LinkedIn to your local database with filtering",
+  "name": "LinkedIn Job Search Filter",
+  "version": "1.0.0",
+  "description": "Free LinkedIn job filter: hide unwanted titles, reposted listings, old postings. No account, no tracking - data stays local.",
   "permissions": [
     "storage"
   ],
@@ -11,7 +11,7 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Multi-Site Job Saver"
+    "default_title": "LinkedIn Job Search Filter"
   },
   "options_page": "options.html",
   "background": {
@@ -22,7 +22,7 @@
       "matches": [
         "https://www.linkedin.com/jobs/*"
       ],
-      "js": ["job-identity.js", "keyword-matching.js", "lifecycle-utils.js", "job-freshness.js", "site-adapters.js", "content-universal.js"],
+      "js": ["job-identity.js", "keyword-matching.js", "lifecycle-utils.js", "panel-drag-utils.js", "job-freshness.js", "site-adapters.js", "content-universal.js"],
       "css": ["styles.css"],
       "run_at": "document_idle"
     }

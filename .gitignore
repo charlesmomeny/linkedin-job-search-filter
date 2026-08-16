@@ -3,7 +3,9 @@
 # Covers files matching the on-disk backup naming pattern currently present...
 saved-jobs-backup*.csv
 # ...and the filename pattern popup.js actually generates on export
-# (multi-site-jobs-YYYY-MM-DD.csv), so future exports are caught too.
+# (linkedin-job-search-filter-jobs-YYYY-MM-DD.csv, formerly
+# multi-site-jobs-YYYY-MM-DD.csv), so future exports are caught too.
+linkedin-job-search-filter-jobs-*.csv
 multi-site-jobs-*.csv
 
 # OS cruft
