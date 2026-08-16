@@ -776,6 +776,8 @@ async function saveCurrentJob() {
     
     showNotification(`Saved job from ${currentAdapter.name}!`);
 
+    syncJobToDashboard(jobData, button);
+
     setTimeout(refreshJobSectionState, 2000);
 
   } catch (error) {
@@ -785,6 +787,34 @@ async function saveCurrentJob() {
 
     setTimeout(refreshJobSectionState, 2000);
   }
+}
+
+// Fires the optional dashboard sync after a local save has already
+// succeeded. Deliberately fire-and-forget (callback form, not
+// awaited) and never throws: a dashboard/network failure must never
+// affect the "Saved!" state saveCurrentJob has already committed to
+// local storage and the UI. All the actual sync logic (including
+// whether a connection is even configured) lives in background.js /
+// dashboard-sync.js - this is intentionally just the trigger.
+function syncJobToDashboard(jobData, button) {
+  chrome.runtime.sendMessage({ action: 'syncJobToDashboard', jobData }, (response) => {
+    if (chrome.runtime.lastError) {
+      console.log('Job Saver: Dashboard sync unavailable:', chrome.runtime.lastError.message);
+      return;
+    }
+
+    if (!response || !button) return;
+
+    if (response.ok) {
+      console.log('Job Saver: Synced job to dashboard');
+      button.title = 'Saved locally and synced to dashboard';
+    } else if (response.reason !== 'not-configured') {
+      // "not-configured" is the normal state for anyone not using
+      // Dashboard Sync - nothing worth reporting for that case.
+      console.log('Job Saver: Dashboard sync did not complete:', response.reason);
+      button.title = 'Saved locally - dashboard sync failed';
+    }
+  });
 }
 
 function showNotification(message) {

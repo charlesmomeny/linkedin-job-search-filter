@@ -9,6 +9,10 @@
   "host_permissions": [
     "https://www.linkedin.com/jobs/*"
   ],
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://*/*"
+  ],
   "action": {
     "default_popup": "popup.html",
     "default_title": "LinkedIn Job Search Filter"

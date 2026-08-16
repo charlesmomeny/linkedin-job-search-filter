@@ -17,10 +17,13 @@ const defaultSettings = {
 // Load saved settings when page opens
 document.addEventListener('DOMContentLoaded', async () => {
   await loadSettings();
+  await loadDashboardConnection();
 
   // Set up event listeners
   document.getElementById('saveBtn').addEventListener('click', saveSettings);
   document.getElementById('resetBtn').addEventListener('click', resetSettings);
+  document.getElementById('saveConnectionBtn').addEventListener('click', saveDashboardConnection);
+  document.getElementById('disconnectBtn').addEventListener('click', disconnectDashboard);
 });
 
 async function loadSettings() {
@@ -100,8 +103,150 @@ function showStatus(message, type) {
   statusDiv.textContent = message;
   statusDiv.className = `status ${type}`;
   statusDiv.style.display = 'block';
-  
+
   // Hide after 5 seconds
+  setTimeout(() => {
+    statusDiv.style.display = 'none';
+  }, 5000);
+}
+
+// ============================================
+// DASHBOARD SYNC (optional)
+//
+// Local job saving works identically with or without this configured -
+// see content-universal.js's syncJobToDashboard(), which only fires a
+// best-effort background sync after a local save has already
+// succeeded. The token here is never displayed again after entry
+// (masked to its last 4 characters), never logged, and never leaves
+// this browser except as the Authorization header on a sync request.
+// ============================================
+
+function maskToken(token) {
+  if (!token || token.length < 8) return '••••••••';
+  return `••••••••${token.slice(-4)}`;
+}
+
+async function loadDashboardConnection() {
+  const result = await chrome.storage.local.get(['dashboardConnection']);
+  const connection = result.dashboardConnection;
+
+  const urlInput = document.getElementById('dashboardUrl');
+  const tokenInput = document.getElementById('dashboardToken');
+  const hint = document.getElementById('dashboardTokenHint');
+  const disconnectBtn = document.getElementById('disconnectBtn');
+  const statusLine = document.getElementById('connectionStatusLine');
+
+  tokenInput.value = '';
+
+  if (!connection) {
+    urlInput.value = '';
+    tokenInput.placeholder = 'Paste the token from your dashboard';
+    hint.textContent = '';
+    disconnectBtn.style.display = 'none';
+    statusLine.textContent = 'Not configured. Local job saving is unaffected either way.';
+    return;
+  }
+
+  urlInput.value = connection.dashboardUrl;
+  tokenInput.placeholder = maskToken(connection.token);
+  hint.textContent = 'A token is already saved - leave this blank to keep it, or paste a new one to replace it.';
+  disconnectBtn.style.display = '';
+  statusLine.textContent = describeConnectionStatus(connection);
+}
+
+function describeConnectionStatus(connection) {
+  if (!connection.lastSyncAt) {
+    return 'Configured - not yet synced. It will be tried the next time you save a job.';
+  }
+  const when = new Date(connection.lastSyncAt).toLocaleString();
+  return connection.lastSyncOk
+    ? `Configured - last sync succeeded (${when}).`
+    : `Configured - last sync failed (${when}). Double-check the URL/token, or that the token hasn't been revoked from the dashboard.`;
+}
+
+async function saveDashboardConnection() {
+  const rawUrl = document.getElementById('dashboardUrl').value.trim();
+  const rawToken = document.getElementById('dashboardToken').value.trim();
+
+  if (!rawUrl) {
+    showDashboardStatus('Enter a Dashboard URL', 'error');
+    return;
+  }
+
+  if (!window.UrlUtils.isSafeJobUrl(rawUrl)) {
+    showDashboardStatus('Dashboard URL must be a valid http:// or https:// address', 'error');
+    return;
+  }
+
+  const origin = new URL(rawUrl).origin;
+
+  // MV3 least-privilege: this extension has no static host permission
+  // for arbitrary dashboards. Instead, request permission for exactly
+  // this one origin, only when the user explicitly saves it here -
+  // requested as early as possible in this handler, since the prompt
+  // requires an active user gesture.
+  let granted;
+  try {
+    granted = await chrome.permissions.request({ origins: [`${origin}/*`] });
+  } catch (error) {
+    showDashboardStatus('Could not request permission for that URL.', 'error');
+    return;
+  }
+
+  if (!granted) {
+    showDashboardStatus('Permission for that URL was not granted, so the connection was not saved.', 'error');
+    return;
+  }
+
+  let token = rawToken;
+  if (!token) {
+    const existing = (await chrome.storage.local.get(['dashboardConnection'])).dashboardConnection;
+    token = existing && existing.token;
+  }
+
+  if (!token) {
+    showDashboardStatus('Enter the Extension Token from your dashboard', 'error');
+    await chrome.permissions.remove({ origins: [`${origin}/*`] }).catch(() => {});
+    return;
+  }
+
+  await chrome.storage.local.set({
+    dashboardConnection: {
+      dashboardUrl: origin,
+      token,
+      // Any change (URL or token) invalidates whatever the previous
+      // sync status meant, so it isn't carried forward.
+      lastSyncAt: null,
+      lastSyncOk: null,
+    },
+  });
+
+  await loadDashboardConnection();
+  showDashboardStatus('✓ Connection saved', 'success');
+}
+
+async function disconnectDashboard() {
+  if (!confirm('Remove the Dashboard Sync connection? Jobs will only be saved locally afterward.')) return;
+
+  const existing = (await chrome.storage.local.get(['dashboardConnection'])).dashboardConnection;
+  await chrome.storage.local.remove('dashboardConnection');
+
+  if (existing && existing.dashboardUrl) {
+    // Relinquish the granted host permission too - least privilege
+    // applies to cleanup, not just acquisition.
+    await chrome.permissions.remove({ origins: [`${existing.dashboardUrl}/*`] }).catch(() => {});
+  }
+
+  await loadDashboardConnection();
+  showDashboardStatus('Connection removed', 'success');
+}
+
+function showDashboardStatus(message, type) {
+  const statusDiv = document.getElementById('dashboardStatus');
+  statusDiv.textContent = message;
+  statusDiv.className = `status ${type}`;
+  statusDiv.style.display = 'block';
+
   setTimeout(() => {
     statusDiv.style.display = 'none';
   }, 5000);

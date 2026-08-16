@@ -1,7 +1,9 @@
 // Shared, dependency-free URL-safety helper for job links. Loaded as a
-// plain classic script in the popup page only (via a <script> tag in
-// popup.html, before popup.js) and requireable from Node for the
-// regression tests in test/url-utils.test.js.
+// plain classic script in the popup page (via a <script> tag in
+// popup.html, before popup.js), the options page (before options.js,
+// for the Dashboard Sync URL field), and the background service worker
+// (via importScripts(), for dashboard-sync.js) - and requireable from
+// Node for the regression tests in test/url-utils.test.js.
 //
 // job.url is a trust-boundary value: when written by the content
 // script (site-adapters.js) it is always window.location.href on a
@@ -46,9 +48,11 @@ const UrlUtils = {
   }
 };
 
-// Popup-page context: classic script, shared `window`.
-if (typeof window !== 'undefined') {
-  window.UrlUtils = UrlUtils;
+// Browser-like contexts: classic script, shared global. `globalThis`
+// (rather than `window`) so this also works from the background service
+// worker via importScripts(), which has `self` but no `window`.
+if (typeof globalThis !== 'undefined') {
+  globalThis.UrlUtils = UrlUtils;
 }
 
 // Node context: used by test/url-utils.test.js.
