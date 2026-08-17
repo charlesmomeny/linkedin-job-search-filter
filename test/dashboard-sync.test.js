@@ -430,6 +430,75 @@ test('buildReconciliationIdentities: an empty/missing savedJobs map returns an e
 });
 
 // ---------------------------------------------------------------------
+// End-to-end regression: all local jobs removed -> empty identity set
+// -> preview must still surface the dashboard's now-orphaned jobs as
+// removal candidates, never fold an empty identity set into "nothing
+// to reconcile". Chains buildReconciliationIdentities() straight into
+// requestReconciliationPreview() from a literal empty savedJobs map -
+// the exact "user cleared all local saves, then ran Sync Dashboard"
+// scenario - with a mocked backend standing in for job-saver-web's
+// real /api/jobs/reconcile/preview (which has no "empty jobs array"
+// special case: an empty identity set means "the extension currently
+// has nothing", not "skip reconciliation", so every dashboard job
+// with a sourceJobId comes back as a removal candidate).
+// ---------------------------------------------------------------------
+
+test('regression: dashboard has jobs + extension identity set is empty -> preview surfaces removal candidates, not "nothing to reconcile"', async () => {
+  await withMockedFetch(
+    () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        toSyncCount: 0,
+        toKeepCount: 0,
+        toRemoveCount: 2,
+        removalCandidates: [
+          {
+            id: 'job-1',
+            source: 'LinkedIn',
+            sourceJobId: '111',
+            title: 'Senior Engineer',
+            company: 'Acme Corp',
+            updatedAt: '2026-08-16T00:00:00.000Z',
+          },
+          {
+            id: 'job-2',
+            source: 'LinkedIn',
+            sourceJobId: '222',
+            title: 'Staff Engineer',
+            company: 'Acme Corp',
+            updatedAt: '2026-08-16T00:00:00.000Z',
+          },
+        ],
+      }),
+    }),
+    async (calls) => {
+      // All local jobs removed - the extension's savedJobs map is
+      // genuinely empty, not merely missing a key.
+      const savedJobs = {};
+
+      const identities = DashboardSync.buildReconciliationIdentities(savedJobs);
+      assert.deepEqual(identities, []);
+
+      const result = await DashboardSync.requestReconciliationPreview(VALID_CONNECTION, identities);
+
+      // The empty identity set must reach the backend as an empty
+      // array, not be short-circuited into skipping the request.
+      assert.equal(calls.length, 1);
+      assert.deepEqual(JSON.parse(calls[0].init.body), { jobs: [] });
+
+      // And the response's removal candidates must come through
+      // untouched - this is what options.js's handlePreviewResult()
+      // uses to decide whether to show "Dashboard is up to date" vs.
+      // the removal confirmation.
+      assert.equal(result.ok, true);
+      assert.equal(result.preview.removalCandidates.length, 2);
+      assert.equal(result.preview.toRemoveCount, 2);
+    },
+  );
+});
+
+// ---------------------------------------------------------------------
 // requestReconciliationPreview
 // ---------------------------------------------------------------------
 
