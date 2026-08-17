@@ -75,5 +75,50 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
+  if (request.action === 'syncDashboard') {
+    // Settings' "Sync Dashboard" control (step 1 of manual
+    // reconciliation - see options.js). Pushes every currently-saved
+    // job first (best-effort, same syncJob() used for the automatic
+    // per-save sync - a suppressed job just resolves ok:true with no
+    // job created, never a warning), so the preview that follows
+    // compares against up-to-date dashboard state, then returns a
+    // read-only preview. Never deletes anything itself - see
+    // DashboardSync.requestReconciliationPreview()'s own comment.
+    (async () => {
+      const stored = await chrome.storage.local.get(['dashboardConnection', 'savedJobs']);
+      const connection = stored.dashboardConnection;
+      const savedJobs = stored.savedJobs || {};
+
+      for (const job of Object.values(savedJobs)) {
+        await self.DashboardSync.syncJob(connection, job);
+      }
+
+      const identities = self.DashboardSync.buildReconciliationIdentities(savedJobs);
+      const preview = await self.DashboardSync.requestReconciliationPreview(connection, identities);
+
+      sendResponse(preview);
+    })();
+    return true;
+  }
+
+  if (request.action === 'approveReconciliationRemovals') {
+    // Settings' explicit "Approve removal" control - only ever called
+    // with the exact removalCandidates array a prior 'syncDashboard'
+    // preview returned (see options.js). Never reconstructs candidates
+    // here - request.removalCandidates is passed straight through to
+    // DashboardSync.approveReconciliationRemovals(), which itself only
+    // sends {id, updatedAt} for each.
+    (async () => {
+      const stored = await chrome.storage.local.get(['dashboardConnection']);
+      const result = await self.DashboardSync.approveReconciliationRemovals(
+        stored.dashboardConnection,
+        request.removalCandidates,
+      );
+
+      sendResponse(result);
+    })();
+    return true;
+  }
+
   return true;
 });
