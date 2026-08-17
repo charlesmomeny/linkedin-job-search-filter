@@ -160,12 +160,38 @@ const SiteAdapters = {
         }
       }
 
-      // Extract location
-      const locationElement = document.querySelector('[class*="location"]') ||
-                            document.querySelector('[class*="workplace"]') ||
-                            document.querySelector('[class*="job-details-jobs-unified-top-card__workplace-type"]');
-      if (locationElement) {
-        data.location = locationElement.textContent.trim();
+      // Extract location. Primary: LinkedIn's current top card has no
+      // stable class/attribute for location, but does reliably render
+      // a "<location> · <posted age> · <applicant signal>" line as a
+      // sibling of the company block - see job-location.js. Anchored
+      // on the company link (already found above), which is reliable.
+      const companyLink = document.querySelector('a[href*="/company/"]');
+      if (companyLink) {
+        let topCard = companyLink;
+        for (let i = 0; i < 3 && topCard; i++) {
+          topCard = topCard.parentElement;
+        }
+        if (topCard) {
+          for (const child of topCard.children) {
+            const location = window.JobLocation.parseLocationLine(child.textContent);
+            if (location) {
+              data.location = location;
+              break;
+            }
+          }
+        }
+      }
+
+      // Fallback: older class-name-based selectors, kept in case a
+      // different LinkedIn layout still uses them. If neither approach
+      // finds anything, location stays '' - never a guessed value.
+      if (!data.location) {
+        const locationElement = document.querySelector('[class*="location"]') ||
+                              document.querySelector('[class*="workplace"]') ||
+                              document.querySelector('[class*="job-details-jobs-unified-top-card__workplace-type"]');
+        if (locationElement) {
+          data.location = locationElement.textContent.trim();
+        }
       }
 
       return data;
