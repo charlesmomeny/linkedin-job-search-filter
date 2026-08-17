@@ -141,6 +141,13 @@ const SiteAdapters = {
         applicantSignal: '',
         promoted: false,
         applicationHandling: '',
+        // Posted age / reposted status: same top-card text as the
+        // fields above, reusing job-freshness.js's existing, already-
+        // tested parsing (previously wired up only for search-results
+        // card filtering, never for the saved/synced job object).
+        // null/false when not found - never guessed.
+        postedAgeDays: null,
+        reposted: false,
         source: 'LinkedIn',
         dateSaved: new Date().toISOString()
       };
@@ -176,6 +183,8 @@ const SiteAdapters = {
       // Responses managed off LinkedIn" line, and a pills row
       // (workplace type / employment type / salary) as siblings of
       // the company block - see job-location.js and job-metadata.js.
+      // Posted age and reposted status reuse job-freshness.js, already
+      // proven against this same kind of text on search-results cards.
       // Anchored on the company link (already found above), which is
       // reliable. Every child is checked for every field (rather than
       // assuming which child holds which piece of text) since real
@@ -224,6 +233,12 @@ const SiteAdapters = {
             if (!data.applicationHandling && status.applicationHandling) {
               data.applicationHandling = status.applicationHandling;
             }
+
+            if (data.postedAgeDays === null) {
+              const postedAgeDays = window.JobFreshness.parsePostedDaysAgo(text);
+              if (postedAgeDays !== null) data.postedAgeDays = postedAgeDays;
+            }
+            if (window.JobFreshness.isReposted(text)) data.reposted = true;
           }
         }
       }

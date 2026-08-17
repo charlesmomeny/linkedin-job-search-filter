@@ -30,6 +30,8 @@ const JOB_DATA = {
   applicantSignal: '26 people clicked apply',
   promoted: true,
   applicationHandling: 'Responses managed off LinkedIn',
+  postedAgeDays: 7,
+  reposted: true,
   source: 'LinkedIn',
   dateSaved: '2026-08-16T00:00:00.000Z',
 };
@@ -86,6 +88,8 @@ test('buildSyncPayload: maps extractJobData()-shaped data to the backend contrac
     applicantSignal: '26 people clicked apply',
     promoted: true,
     applicationHandling: 'Responses managed off LinkedIn',
+    postedAgeDays: 7,
+    reposted: true,
     sourceSavedAt: '2026-08-16T00:00:00.000Z',
   });
 });
@@ -117,6 +121,33 @@ test('buildSyncPayload: missing metadata fields (extractJobData()\'s empty-strin
 test('buildSyncPayload: promoted is always coerced to a real boolean', () => {
   assert.equal(DashboardSync.buildSyncPayload({ ...JOB_DATA, promoted: undefined }).promoted, false);
   assert.equal(DashboardSync.buildSyncPayload({ ...JOB_DATA, promoted: true }).promoted, true);
+});
+
+test('buildSyncPayload: includes postedAgeDays and reposted when extractJobData() found them', () => {
+  const payload = DashboardSync.buildSyncPayload({ ...JOB_DATA, postedAgeDays: 3, reposted: true });
+  assert.equal(payload.postedAgeDays, 3);
+  assert.equal(payload.reposted, true);
+});
+
+test('buildSyncPayload: postedAgeDays is null and reposted is false when not found (fail open, no guessing)', () => {
+  const payload = DashboardSync.buildSyncPayload({ ...JOB_DATA, postedAgeDays: null, reposted: false });
+  assert.equal(payload.postedAgeDays, null);
+  assert.equal(payload.reposted, false);
+});
+
+test('buildSyncPayload: postedAgeDays defaults to null and reposted to false for a jobData object that predates these fields', () => {
+  const { postedAgeDays, reposted, ...legacyJobData } = JOB_DATA;
+  void postedAgeDays;
+  void reposted;
+
+  const payload = DashboardSync.buildSyncPayload(legacyJobData);
+  assert.equal(payload.postedAgeDays, null);
+  assert.equal(payload.reposted, false);
+});
+
+test('buildSyncPayload: postedAgeDays of 0 (posted "just now") is preserved, not treated as missing', () => {
+  const payload = DashboardSync.buildSyncPayload({ ...JOB_DATA, postedAgeDays: 0 });
+  assert.equal(payload.postedAgeDays, 0);
 });
 
 // ---------------------------------------------------------------------
