@@ -132,6 +132,15 @@ const SiteAdapters = {
         title: '',
         company: '',
         location: '',
+        // Additional metadata confirmed extractable from the same
+        // top-card area as location (see job-metadata.js). Full job
+        // description remains deferred - not safely extractable yet.
+        workplaceType: '',
+        employmentType: '',
+        salaryText: '',
+        applicantSignal: '',
+        promoted: false,
+        applicationHandling: '',
         source: 'LinkedIn',
         dateSaved: new Date().toISOString()
       };
@@ -160,11 +169,18 @@ const SiteAdapters = {
         }
       }
 
-      // Extract location. Primary: LinkedIn's current top card has no
-      // stable class/attribute for location, but does reliably render
-      // a "<location> · <posted age> · <applicant signal>" line as a
-      // sibling of the company block - see job-location.js. Anchored
-      // on the company link (already found above), which is reliable.
+      // Extract location + additional metadata. Primary: LinkedIn's
+      // current top card has no stable class/attribute for any of
+      // these, but does reliably render a "<location> · <posted age>
+      // · <applicant signal>" line, a separate "Promoted by hirer ·
+      // Responses managed off LinkedIn" line, and a pills row
+      // (workplace type / employment type / salary) as siblings of
+      // the company block - see job-location.js and job-metadata.js.
+      // Anchored on the company link (already found above), which is
+      // reliable. Every child is checked for every field (rather than
+      // assuming which child holds which piece of text) since real
+      // postings have been confirmed to glue this text together
+      // differently from one posting to the next.
       const companyLink = document.querySelector('a[href*="/company/"]');
       if (companyLink) {
         let topCard = companyLink;
@@ -172,11 +188,41 @@ const SiteAdapters = {
           topCard = topCard.parentElement;
         }
         if (topCard) {
-          for (const child of topCard.children) {
-            const location = window.JobLocation.parseLocationLine(child.textContent);
-            if (location) {
-              data.location = location;
-              break;
+          // The pills row (workplace type / employment type / salary)
+          // sits one DOM level higher on the standalone /jobs/view/
+          // page than it does on the split search+detail view -
+          // confirmed live on both layouts. Scanning topCard's own
+          // children AND its parent's children (still a small, tightly
+          // scoped set - confirmed live, not the whole page) covers
+          // both without needing to detect which layout is active.
+          const candidates = [...topCard.children];
+          if (topCard.parentElement) candidates.push(...topCard.parentElement.children);
+
+          for (const child of candidates) {
+            // Skip the child holding the title/company identity block -
+            // it can legitimately contain words that collide with the
+            // metadata keywords below (e.g. a title like "Remote
+            // Sensing Engineer").
+            if (titleElement && child.contains(titleElement)) continue;
+            if (child.contains(companyLink)) continue;
+
+            const text = child.textContent;
+
+            if (!data.location) {
+              const location = window.JobLocation.parseLocationLine(text);
+              if (location) data.location = location;
+            }
+
+            const pills = window.JobMetadata.parsePillsText(text);
+            if (!data.workplaceType && pills.workplaceType) data.workplaceType = pills.workplaceType;
+            if (!data.employmentType && pills.employmentType) data.employmentType = pills.employmentType;
+            if (!data.salaryText && pills.salaryText) data.salaryText = pills.salaryText;
+
+            const status = window.JobMetadata.parseStatusText(text);
+            if (!data.applicantSignal && status.applicantSignal) data.applicantSignal = status.applicantSignal;
+            if (status.promoted) data.promoted = true;
+            if (!data.applicationHandling && status.applicationHandling) {
+              data.applicationHandling = status.applicationHandling;
             }
           }
         }

@@ -24,6 +24,12 @@ const JOB_DATA = {
   title: 'Senior Engineer',
   company: 'Acme Corp',
   location: 'Remote',
+  workplaceType: 'Remote',
+  employmentType: 'Full-time',
+  salaryText: '$150K/yr - $180K/yr',
+  applicantSignal: '26 people clicked apply',
+  promoted: true,
+  applicationHandling: 'Responses managed off LinkedIn',
   source: 'LinkedIn',
   dateSaved: '2026-08-16T00:00:00.000Z',
 };
@@ -74,6 +80,12 @@ test('buildSyncPayload: maps extractJobData()-shaped data to the backend contrac
     company: 'Acme Corp',
     location: 'Remote',
     url: 'https://www.linkedin.com/jobs/view/123456',
+    workplaceType: 'Remote',
+    employmentType: 'Full-time',
+    salaryText: '$150K/yr - $180K/yr',
+    applicantSignal: '26 people clicked apply',
+    promoted: true,
+    applicationHandling: 'Responses managed off LinkedIn',
     sourceSavedAt: '2026-08-16T00:00:00.000Z',
   });
 });
@@ -81,6 +93,30 @@ test('buildSyncPayload: maps extractJobData()-shaped data to the backend contrac
 test('buildSyncPayload: maps a missing jobId to null sourceJobId, not a fabricated id', () => {
   const payload = DashboardSync.buildSyncPayload({ ...JOB_DATA, jobId: null });
   assert.equal(payload.sourceJobId, null);
+});
+
+test('buildSyncPayload: missing metadata fields (extractJobData()\'s empty-string convention) pass through as-is', () => {
+  const payload = DashboardSync.buildSyncPayload({
+    ...JOB_DATA,
+    workplaceType: '',
+    employmentType: '',
+    salaryText: '',
+    applicantSignal: '',
+    promoted: false,
+    applicationHandling: '',
+  });
+
+  assert.equal(payload.workplaceType, '');
+  assert.equal(payload.employmentType, '');
+  assert.equal(payload.salaryText, '');
+  assert.equal(payload.applicantSignal, '');
+  assert.equal(payload.promoted, false);
+  assert.equal(payload.applicationHandling, '');
+});
+
+test('buildSyncPayload: promoted is always coerced to a real boolean', () => {
+  assert.equal(DashboardSync.buildSyncPayload({ ...JOB_DATA, promoted: undefined }).promoted, false);
+  assert.equal(DashboardSync.buildSyncPayload({ ...JOB_DATA, promoted: true }).promoted, true);
 });
 
 // ---------------------------------------------------------------------

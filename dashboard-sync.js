@@ -69,7 +69,10 @@ const DashboardSync = {
   // extractJobData()) to job-saver-web's POST /api/jobs/sync payload
   // contract. Only fields the extension actually collects today are
   // sent; fields it doesn't collect (description, reposted,
-  // postedAgeDays) are simply omitted rather than guessed at.
+  // postedAgeDays) are simply omitted rather than guessed at. The
+  // metadata fields below are sent as-is (possibly '') - the backend
+  // already normalizes blank/whitespace strings to null, the same way
+  // it already does for location.
   buildSyncPayload(jobData) {
     return {
       source: jobData.source,
@@ -78,6 +81,12 @@ const DashboardSync = {
       company: jobData.company,
       location: jobData.location,
       url: jobData.url,
+      workplaceType: jobData.workplaceType,
+      employmentType: jobData.employmentType,
+      salaryText: jobData.salaryText,
+      applicantSignal: jobData.applicantSignal,
+      promoted: !!jobData.promoted,
+      applicationHandling: jobData.applicationHandling,
       sourceSavedAt: jobData.dateSaved || new Date().toISOString(),
     };
   },
