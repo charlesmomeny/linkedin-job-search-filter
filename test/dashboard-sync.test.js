@@ -388,3 +388,319 @@ test('testConnection: succeeds even if the response body is not valid JSON', asy
     },
   );
 });
+
+// ---------------------------------------------------------------------
+// buildReconciliationIdentities
+// ---------------------------------------------------------------------
+
+test('buildReconciliationIdentities: maps savedJobs entries to exact source+sourceJobId identities', () => {
+  const identities = DashboardSync.buildReconciliationIdentities({
+    key1: { ...JOB_DATA, source: 'LinkedIn', jobId: '111' },
+    key2: { ...JOB_DATA, source: 'Indeed', jobId: '222' },
+  });
+
+  assert.deepEqual(identities, [
+    { source: 'LinkedIn', sourceJobId: '111' },
+    { source: 'Indeed', sourceJobId: '222' },
+  ]);
+});
+
+test('buildReconciliationIdentities: excludes jobs with no sourceJobId - they have no safe identity to reconcile by', () => {
+  const identities = DashboardSync.buildReconciliationIdentities({
+    noId: { ...JOB_DATA, source: 'LinkedIn', jobId: null },
+    blankId: { ...JOB_DATA, source: 'LinkedIn', jobId: '' },
+    missingId: { ...JOB_DATA, source: 'LinkedIn', jobId: undefined },
+    hasId: { ...JOB_DATA, source: 'LinkedIn', jobId: '999' },
+  });
+
+  assert.deepEqual(identities, [{ source: 'LinkedIn', sourceJobId: '999' }]);
+});
+
+test('buildReconciliationIdentities: excludes jobs with no source', () => {
+  const identities = DashboardSync.buildReconciliationIdentities({
+    noSource: { ...JOB_DATA, source: null, jobId: '111' },
+  });
+  assert.deepEqual(identities, []);
+});
+
+test('buildReconciliationIdentities: an empty/missing savedJobs map returns an empty array, never throws', () => {
+  assert.deepEqual(DashboardSync.buildReconciliationIdentities({}), []);
+  assert.deepEqual(DashboardSync.buildReconciliationIdentities(null), []);
+  assert.deepEqual(DashboardSync.buildReconciliationIdentities(undefined), []);
+});
+
+// ---------------------------------------------------------------------
+// requestReconciliationPreview
+// ---------------------------------------------------------------------
+
+test('requestReconciliationPreview: no connection configured never calls fetch', async () => {
+  await withMockedFetch(
+    () => {
+      throw new Error('fetch should not be called');
+    },
+    async (calls) => {
+      const result = await DashboardSync.requestReconciliationPreview(null, []);
+      assert.deepEqual(result, { ok: false, reason: 'not-configured' });
+      assert.equal(calls.length, 0);
+    },
+  );
+});
+
+test('requestReconciliationPreview: sends a POST with the identity set as the request body, and the token only in the header', async () => {
+  await withMockedFetch(
+    () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ toSyncCount: 0, toKeepCount: 2, toRemoveCount: 0, removalCandidates: [] }),
+    }),
+    async (calls) => {
+      const identities = [{ source: 'LinkedIn', sourceJobId: '111' }];
+      await DashboardSync.requestReconciliationPreview(VALID_CONNECTION, identities);
+
+      assert.equal(calls.length, 1);
+      assert.equal(calls[0].url, 'https://dashboard.example.com/api/jobs/reconcile/preview');
+      assert.equal(calls[0].init.method, 'POST');
+      assert.equal(calls[0].init.headers['Authorization'], `Bearer ${VALID_CONNECTION.token}`);
+
+      const body = JSON.parse(calls[0].init.body);
+      assert.deepEqual(body, { jobs: identities });
+      assert.equal(JSON.stringify(body).includes(VALID_CONNECTION.token), false);
+    },
+  );
+});
+
+test('requestReconciliationPreview: zero removal candidates resolves ok:true with an empty removalCandidates array', async () => {
+  await withMockedFetch(
+    () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ toSyncCount: 1, toKeepCount: 3, toRemoveCount: 0, removalCandidates: [] }),
+    }),
+    async () => {
+      const result = await DashboardSync.requestReconciliationPreview(VALID_CONNECTION, []);
+      assert.deepEqual(result, {
+        ok: true,
+        preview: { toSyncCount: 1, toKeepCount: 3, toRemoveCount: 0, removalCandidates: [] },
+      });
+    },
+  );
+});
+
+test('requestReconciliationPreview: removal candidates are passed through exactly as returned', async () => {
+  const candidate = {
+    id: 'job-1',
+    source: 'LinkedIn',
+    sourceJobId: '111',
+    title: 'Senior Engineer',
+    company: 'Acme Corp',
+    updatedAt: '2026-08-16T00:00:00.000Z',
+  };
+
+  await withMockedFetch(
+    () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ toSyncCount: 0, toKeepCount: 0, toRemoveCount: 1, removalCandidates: [candidate] }),
+    }),
+    async () => {
+      const result = await DashboardSync.requestReconciliationPreview(VALID_CONNECTION, []);
+      assert.equal(result.ok, true);
+      assert.deepEqual(result.preview.removalCandidates, [candidate]);
+    },
+  );
+});
+
+test('requestReconciliationPreview: never calls the approve endpoint - it is strictly read-only', async () => {
+  await withMockedFetch(
+    () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ toSyncCount: 0, toKeepCount: 0, toRemoveCount: 1, removalCandidates: [{ id: 'job-1' }] }),
+    }),
+    async (calls) => {
+      await DashboardSync.requestReconciliationPreview(VALID_CONNECTION, []);
+      assert.equal(calls.every((call) => !call.url.includes('/reconcile/approve')), true);
+    },
+  );
+});
+
+test('requestReconciliationPreview: a 401 response resolves ok:false, reason unauthorized', async () => {
+  await withMockedFetch(
+    () => ({ ok: false, status: 401 }),
+    async () => {
+      const result = await DashboardSync.requestReconciliationPreview(VALID_CONNECTION, []);
+      assert.deepEqual(result, { ok: false, reason: 'unauthorized', status: 401 });
+    },
+  );
+});
+
+test('requestReconciliationPreview: a non-401 HTTP error resolves ok:false, reason http-error', async () => {
+  await withMockedFetch(
+    () => ({ ok: false, status: 500 }),
+    async () => {
+      const result = await DashboardSync.requestReconciliationPreview(VALID_CONNECTION, []);
+      assert.deepEqual(result, { ok: false, reason: 'http-error', status: 500 });
+    },
+  );
+});
+
+test('requestReconciliationPreview: a network failure (fetch throws) resolves ok:false, does not throw', async () => {
+  await withMockedFetch(
+    () => {
+      throw new TypeError('Failed to fetch');
+    },
+    async () => {
+      const result = await DashboardSync.requestReconciliationPreview(VALID_CONNECTION, []);
+      assert.deepEqual(result, { ok: false, reason: 'network-error' });
+    },
+  );
+});
+
+test('requestReconciliationPreview: a malformed response body resolves ok:false, reason invalid-response', async () => {
+  await withMockedFetch(
+    () => ({ ok: true, status: 200, json: async () => ({ notWhatWeExpected: true }) }),
+    async () => {
+      const result = await DashboardSync.requestReconciliationPreview(VALID_CONNECTION, []);
+      assert.deepEqual(result, { ok: false, reason: 'invalid-response' });
+    },
+  );
+});
+
+// ---------------------------------------------------------------------
+// approveReconciliationRemovals
+// ---------------------------------------------------------------------
+
+test('approveReconciliationRemovals: no connection configured never calls fetch', async () => {
+  await withMockedFetch(
+    () => {
+      throw new Error('fetch should not be called');
+    },
+    async (calls) => {
+      const result = await DashboardSync.approveReconciliationRemovals(null, [
+        { id: 'job-1', updatedAt: '2026-08-16T00:00:00.000Z' },
+      ]);
+      assert.deepEqual(result, { ok: false, reason: 'not-configured' });
+      assert.equal(calls.length, 0);
+    },
+  );
+});
+
+test('approveReconciliationRemovals: sends only {id, updatedAt} for each candidate - never the full candidate object, and never the token in the body', async () => {
+  await withMockedFetch(
+    () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ deletedCount: 1, deletedIds: ['job-1'], skippedIds: [] }),
+    }),
+    async (calls) => {
+      const candidates = [
+        {
+          id: 'job-1',
+          source: 'LinkedIn',
+          sourceJobId: '111',
+          title: 'Senior Engineer',
+          company: 'Acme Corp',
+          updatedAt: '2026-08-16T00:00:00.000Z',
+        },
+      ];
+
+      await DashboardSync.approveReconciliationRemovals(VALID_CONNECTION, candidates);
+
+      assert.equal(calls.length, 1);
+      assert.equal(calls[0].url, 'https://dashboard.example.com/api/jobs/reconcile/approve');
+      assert.equal(calls[0].init.method, 'POST');
+      assert.equal(calls[0].init.headers['Authorization'], `Bearer ${VALID_CONNECTION.token}`);
+
+      const body = JSON.parse(calls[0].init.body);
+      assert.deepEqual(body, {
+        approvals: [{ id: 'job-1', updatedAt: '2026-08-16T00:00:00.000Z' }],
+      });
+      assert.equal(JSON.stringify(body).includes(VALID_CONNECTION.token), false);
+    },
+  );
+});
+
+test('approveReconciliationRemovals: an empty candidate list never calls fetch, resolves ok:false reason no-candidates', async () => {
+  await withMockedFetch(
+    () => {
+      throw new Error('fetch should not be called');
+    },
+    async (calls) => {
+      const result = await DashboardSync.approveReconciliationRemovals(VALID_CONNECTION, []);
+      assert.deepEqual(result, { ok: false, reason: 'no-candidates' });
+      assert.equal(calls.length, 0);
+    },
+  );
+});
+
+test('approveReconciliationRemovals: surfaces deletedIds and skippedIds distinctly - a skipped (stale) candidate is never reported as deleted', async () => {
+  await withMockedFetch(
+    () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ deletedCount: 1, deletedIds: ['job-1'], skippedIds: ['job-2'] }),
+    }),
+    async () => {
+      const result = await DashboardSync.approveReconciliationRemovals(VALID_CONNECTION, [
+        { id: 'job-1', updatedAt: '2026-08-16T00:00:00.000Z' },
+        { id: 'job-2', updatedAt: '2026-08-15T00:00:00.000Z' },
+      ]);
+
+      assert.deepEqual(result, {
+        ok: true,
+        deletedCount: 1,
+        deletedIds: ['job-1'],
+        skippedIds: ['job-2'],
+      });
+      assert.equal(result.deletedIds.includes('job-2'), false);
+    },
+  );
+});
+
+test('approveReconciliationRemovals: a 401 response resolves ok:false, reason unauthorized', async () => {
+  await withMockedFetch(
+    () => ({ ok: false, status: 401 }),
+    async () => {
+      const result = await DashboardSync.approveReconciliationRemovals(VALID_CONNECTION, [
+        { id: 'job-1', updatedAt: '2026-08-16T00:00:00.000Z' },
+      ]);
+      assert.deepEqual(result, { ok: false, reason: 'unauthorized', status: 401 });
+    },
+  );
+});
+
+test('approveReconciliationRemovals: a network failure (fetch throws) resolves ok:false, does not throw', async () => {
+  await withMockedFetch(
+    () => {
+      throw new TypeError('Failed to fetch');
+    },
+    async () => {
+      const result = await DashboardSync.approveReconciliationRemovals(VALID_CONNECTION, [
+        { id: 'job-1', updatedAt: '2026-08-16T00:00:00.000Z' },
+      ]);
+      assert.deepEqual(result, { ok: false, reason: 'network-error' });
+    },
+  );
+});
+
+// ---------------------------------------------------------------------
+// Suppressed-job sync responses (POST /api/jobs/sync returning
+// { job: null, suppressed: true } for a manually-deleted, tombstoned
+// dashboard job) - syncJob() only ever inspects response.ok, so a
+// suppressed 200 response must resolve exactly like any other
+// successful sync: ok:true, no warning, nothing recreated.
+// ---------------------------------------------------------------------
+
+test('syncJob: a suppressed-job response (200, {job:null,suppressed:true}) resolves ok:true like any other successful sync', async () => {
+  await withMockedFetch(
+    () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ job: null, suppressed: true }),
+    }),
+    async () => {
+      const result = await DashboardSync.syncJob(VALID_CONNECTION, JOB_DATA);
+      assert.deepEqual(result, { ok: true });
+    },
+  );
+});

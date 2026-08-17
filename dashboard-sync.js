@@ -11,6 +11,8 @@
 
 const DASHBOARD_SYNC_PATH = '/api/jobs/sync';
 const DASHBOARD_PING_PATH = '/api/extension/ping';
+const DASHBOARD_RECONCILE_PREVIEW_PATH = '/api/jobs/reconcile/preview';
+const DASHBOARD_RECONCILE_APPROVE_PATH = '/api/jobs/reconcile/approve';
 
 // Validates the connection, normalizes the URL, and issues one
 // Authorization-bearing request to the dashboard - the piece syncJob()
@@ -152,6 +154,134 @@ const DashboardSync = {
     }
 
     return { ok: true, email: (body && body.email) || undefined };
+  },
+
+  // ---------------------------------------------------------------------
+  // Reconciliation (safe, explicit-approval-only dashboard cleanup).
+  //
+  // Identity is exact source+sourceJobId only - never fuzzy title/
+  // company matching, matching job-saver-web's own reconciliation
+  // contract (lib/services/reconciliation.ts). A saved job with no
+  // stable id (jobData.jobId is falsy - some sources/extractions never
+  // expose one, see site-adapters.js) has no safe identity to
+  // reconcile by and is excluded entirely: it can never be assumed
+  // present OR absent on the dashboard by identity, so including it
+  // would risk exactly the kind of unsafe assumption destructive
+  // reconciliation must never make.
+  // ---------------------------------------------------------------------
+
+  // Builds the exact identity set reconciliation needs from this
+  // browser's current savedJobs storage map (chrome.storage.local's
+  // 'savedJobs' key). Pure/synchronous - no network, no chrome APIs -
+  // so it's trivially unit-testable.
+  buildReconciliationIdentities(savedJobs) {
+    const jobs = savedJobs && typeof savedJobs === 'object' ? Object.values(savedJobs) : [];
+    const identities = [];
+
+    for (const job of jobs) {
+      if (!job || !job.source || !job.jobId) continue;
+      identities.push({ source: job.source, sourceJobId: job.jobId });
+    }
+
+    return identities;
+  },
+
+  // Requests a read-only reconciliation preview for the given identity
+  // set. Never mutates anything server-side - matches the backend's own
+  // read-only preview contract - and never throws: resolves
+  // { ok: true, preview: { toSyncCount, toKeepCount, toRemoveCount,
+  // removalCandidates } } or { ok: false, reason }, the same
+  // ok/reason shape as syncJob()/testConnection() above.
+  async requestReconciliationPreview(connection, identities) {
+    const result = await authenticatedDashboardFetch(connection, DASHBOARD_RECONCILE_PREVIEW_PATH, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jobs: identities || [] }),
+    });
+
+    if (!result.ok) return result;
+
+    if (!result.response.ok) {
+      return {
+        ok: false,
+        reason: result.response.status === 401 ? 'unauthorized' : 'http-error',
+        status: result.response.status,
+      };
+    }
+
+    let body = null;
+    try {
+      body = await result.response.json();
+    } catch (error) {
+      return { ok: false, reason: 'invalid-response' };
+    }
+
+    if (!body || typeof body !== 'object' || !Array.isArray(body.removalCandidates)) {
+      return { ok: false, reason: 'invalid-response' };
+    }
+
+    return {
+      ok: true,
+      preview: {
+        toSyncCount: body.toSyncCount || 0,
+        toKeepCount: body.toKeepCount || 0,
+        toRemoveCount: body.toRemoveCount || 0,
+        removalCandidates: body.removalCandidates,
+      },
+    };
+  },
+
+  // Approves EXACTLY the removal candidates passed in - each must be
+  // one of the objects requestReconciliationPreview() returned (an id
+  // and the updatedAt it was shown with), never reconstructed from job
+  // data client-side. The backend independently re-validates updatedAt
+  // against the job's current value and skips (never deletes) anything
+  // that changed since - see approveReconciliationRemovals() in
+  // job-saver-web's lib/services/reconciliation.ts. Never throws:
+  // resolves { ok: true, deletedCount, deletedIds, skippedIds } or
+  // { ok: false, reason }.
+  async approveReconciliationRemovals(connection, removalCandidates) {
+    const approvals = (removalCandidates || [])
+      .filter((candidate) => candidate && candidate.id && candidate.updatedAt)
+      .map((candidate) => ({ id: candidate.id, updatedAt: candidate.updatedAt }));
+
+    if (approvals.length === 0) {
+      return { ok: false, reason: 'no-candidates' };
+    }
+
+    const result = await authenticatedDashboardFetch(connection, DASHBOARD_RECONCILE_APPROVE_PATH, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ approvals }),
+    });
+
+    if (!result.ok) return result;
+
+    if (!result.response.ok) {
+      return {
+        ok: false,
+        reason: result.response.status === 401 ? 'unauthorized' : 'http-error',
+        status: result.response.status,
+      };
+    }
+
+    let body = null;
+    try {
+      body = await result.response.json();
+    } catch (error) {
+      return { ok: false, reason: 'invalid-response' };
+    }
+
+    if (!body || typeof body !== 'object') {
+      return { ok: false, reason: 'invalid-response' };
+    }
+
+    return {
+      ok: true,
+      deletedCount: body.deletedCount || 0,
+      deletedIds: body.deletedIds || [],
+      skippedIds: body.skippedIds || [],
+    };
   },
 };
 

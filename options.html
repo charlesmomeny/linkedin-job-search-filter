@@ -160,6 +160,33 @@
       margin-top: 8px;
     }
 
+    .reconcile-result {
+      margin-top: 14px;
+      padding: 10px 12px;
+      border-radius: 4px;
+      background: #f8f9fa;
+      border: 1px solid #e0e0e0;
+      font-size: 13px;
+    }
+
+    .reconcile-result p {
+      margin: 0 0 8px;
+      color: #333;
+    }
+
+    .reconcile-candidate-list {
+      margin: 0 0 12px;
+      padding-left: 18px;
+      font-size: 12px;
+      color: #555;
+      max-height: 140px;
+      overflow-y: auto;
+    }
+
+    .reconcile-candidate-list li {
+      margin-bottom: 4px;
+    }
+
     input:focus {
       outline: none;
       border-color: #0a66c2;
@@ -424,11 +451,21 @@
     <div class="button-group">
       <button class="save-btn" id="saveConnectionBtn">🔗 Save Connection</button>
       <button class="reset-btn" id="testConnectionBtn" style="display: none;">📡 Test Connection</button>
+      <button class="reset-btn" id="syncDashboardBtn" style="display: none;">🔄 Sync Dashboard</button>
       <button class="reset-btn" id="disconnectBtn" style="display: none;">🔌 Disconnect</button>
     </div>
 
     <div class="connection-status-line" id="connectionStatusLine"></div>
     <div class="status" id="dashboardStatus"></div>
+
+    <div class="reconcile-result" id="reconcileResult" style="display: none;">
+      <p id="reconcileMessage"></p>
+      <ul class="reconcile-candidate-list" id="reconcileCandidateList" style="display: none;"></ul>
+      <div class="button-group" id="reconcileActions" style="display: none;">
+        <button class="reset-btn" id="reconcileCancelBtn">Cancel</button>
+        <button class="save-btn" id="reconcileApproveBtn">Approve removal</button>
+      </div>
+    </div>
   </div>
 
   <script src="url-utils.js"></script>

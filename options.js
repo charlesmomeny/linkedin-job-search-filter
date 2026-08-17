@@ -24,6 +24,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('resetBtn').addEventListener('click', resetSettings);
   document.getElementById('saveConnectionBtn').addEventListener('click', saveDashboardConnection);
   document.getElementById('testConnectionBtn').addEventListener('click', testDashboardConnection);
+  document.getElementById('syncDashboardBtn').addEventListener('click', runDashboardReconciliation);
+  document.getElementById('reconcileCancelBtn').addEventListener('click', cancelRemovalConfirmation);
+  document.getElementById('reconcileApproveBtn').addEventListener('click', approveRemovals);
   document.getElementById('disconnectBtn').addEventListener('click', disconnectDashboard);
 });
 
@@ -136,9 +139,11 @@ async function loadDashboardConnection() {
   const hint = document.getElementById('dashboardTokenHint');
   const disconnectBtn = document.getElementById('disconnectBtn');
   const testConnectionBtn = document.getElementById('testConnectionBtn');
+  const syncDashboardBtn = document.getElementById('syncDashboardBtn');
   const statusLine = document.getElementById('connectionStatusLine');
 
   tokenInput.value = '';
+  hideReconcileResult();
 
   if (!connection) {
     urlInput.value = '';
@@ -146,6 +151,7 @@ async function loadDashboardConnection() {
     hint.textContent = '';
     disconnectBtn.style.display = 'none';
     testConnectionBtn.style.display = 'none';
+    syncDashboardBtn.style.display = 'none';
     statusLine.textContent = 'Not configured. Local job saving is unaffected either way.';
     return;
   }
@@ -155,6 +161,7 @@ async function loadDashboardConnection() {
   hint.textContent = 'A token is already saved - leave this blank to keep it, or paste a new one to replace it.';
   disconnectBtn.style.display = '';
   testConnectionBtn.style.display = '';
+  syncDashboardBtn.style.display = '';
   statusLine.textContent = describeConnectionStatus(connection);
 }
 
@@ -309,4 +316,187 @@ function showDashboardStatus(message, type) {
   setTimeout(() => {
     statusDiv.style.display = 'none';
   }, 5000);
+}
+
+// ============================================
+// DASHBOARD RECONCILIATION (manual, explicit-approval-only)
+//
+// "Sync Dashboard" pushes every currently-saved job (best-effort, same
+// per-job sync used automatically after each local save - see
+// background.js's 'syncDashboard' handler) and then requests a
+// read-only preview of dashboard entries that no longer match any
+// locally saved job by exact source+sourceJobId identity. Nothing is
+// ever deleted without a separate, explicit "Approve removal" click on
+// exactly the candidates the preview returned - see approveRemovals().
+// A dashboard/network failure anywhere in this flow only ever produces
+// an inline message here; it never touches local saved-job storage.
+// ============================================
+
+// Holds the exact removalCandidates array the last preview returned,
+// so approveRemovals() can send it back unmodified rather than
+// reconstructing candidate ids client-side. Cleared on Cancel and
+// whenever a new message replaces the confirmation.
+let pendingRemovalCandidates = null;
+
+async function runDashboardReconciliation() {
+  const syncBtn = document.getElementById('syncDashboardBtn');
+  syncBtn.disabled = true;
+  syncBtn.textContent = '🔄 Syncing...';
+  hideReconcileResult();
+
+  try {
+    const result = await sendMessagePromise({ action: 'syncDashboard' });
+    handlePreviewResult(result);
+  } catch (error) {
+    // Background script unreachable - never surfaced as anything to do
+    // with the token/dashboard itself, and never touches local saves.
+    showReconcileMessage('Could not run Sync Dashboard right now.');
+  } finally {
+    syncBtn.disabled = false;
+    syncBtn.textContent = '🔄 Sync Dashboard';
+  }
+}
+
+function handlePreviewResult(result) {
+  if (!result || !result.ok) {
+    showReconcileMessage(describePreviewError(result));
+    return;
+  }
+
+  const { preview } = result;
+
+  if (!preview.removalCandidates.length) {
+    showReconcileMessage('Dashboard is up to date.');
+    return;
+  }
+
+  const count = preview.removalCandidates.length;
+  showRemovalConfirmation(
+    `Sync will remove ${count} dashboard ${count === 1 ? 'entry' : 'entries'} that ${count === 1 ? 'is' : 'are'} no longer saved in the extension.`,
+    preview.removalCandidates,
+  );
+}
+
+// Maps a preview/approval failure result to a user-facing message.
+// Shared by both calls since they return the same ok/reason shape.
+function describePreviewError(result) {
+  if (!result) return 'Sync failed.';
+
+  switch (result.reason) {
+    case 'not-configured':
+      return 'Save a connection first.';
+    case 'unauthorized':
+      return '✗ Token invalid or revoked - generate a new one from the dashboard.';
+    case 'network-error':
+      return '✗ Could not reach the dashboard - check the URL and your network connection.';
+    case 'invalid-url':
+      return '✗ Dashboard URL is not valid.';
+    case 'invalid-response':
+      return '✗ Dashboard returned an unexpected response.';
+    case 'no-candidates':
+      return 'Nothing to remove.';
+    default:
+      return `✗ Sync failed${result.status ? ` (HTTP ${result.status})` : ''}.`;
+  }
+}
+
+// Shows a plain informational message (no pending removal) - used for
+// "up to date", errors, and post-approval results alike.
+function showReconcileMessage(message) {
+  pendingRemovalCandidates = null;
+  const resultDiv = document.getElementById('reconcileResult');
+  const messageEl = document.getElementById('reconcileMessage');
+  const listEl = document.getElementById('reconcileCandidateList');
+  const actionsEl = document.getElementById('reconcileActions');
+
+  messageEl.textContent = message;
+  listEl.style.display = 'none';
+  listEl.innerHTML = '';
+  actionsEl.style.display = 'none';
+  resultDiv.style.display = 'block';
+}
+
+// Shows the count message, a compact title/company list, and the
+// Cancel/Approve controls, and stores the exact candidates so
+// approveRemovals() can send them back unmodified.
+function showRemovalConfirmation(message, candidates) {
+  pendingRemovalCandidates = candidates;
+
+  const resultDiv = document.getElementById('reconcileResult');
+  const messageEl = document.getElementById('reconcileMessage');
+  const listEl = document.getElementById('reconcileCandidateList');
+  const actionsEl = document.getElementById('reconcileActions');
+
+  messageEl.textContent = message;
+
+  listEl.innerHTML = '';
+  for (const candidate of candidates) {
+    const li = document.createElement('li');
+    const title = candidate.title || 'Untitled';
+    const company = candidate.company || 'Unknown company';
+    li.textContent = `${title} - ${company}`;
+    listEl.appendChild(li);
+  }
+  listEl.style.display = candidates.length ? 'block' : 'none';
+
+  actionsEl.style.display = 'flex';
+  resultDiv.style.display = 'block';
+}
+
+function hideReconcileResult() {
+  pendingRemovalCandidates = null;
+  document.getElementById('reconcileResult').style.display = 'none';
+  document.getElementById('reconcileCandidateList').innerHTML = '';
+}
+
+function cancelRemovalConfirmation() {
+  // Cancel means no removal request is ever sent - this only clears
+  // local UI state.
+  hideReconcileResult();
+}
+
+async function approveRemovals() {
+  if (!pendingRemovalCandidates || !pendingRemovalCandidates.length) return;
+
+  // Capture before any state gets cleared by an intermediate message.
+  const candidates = pendingRemovalCandidates;
+
+  const approveBtn = document.getElementById('reconcileApproveBtn');
+  const cancelBtn = document.getElementById('reconcileCancelBtn');
+  approveBtn.disabled = true;
+  cancelBtn.disabled = true;
+  approveBtn.textContent = 'Removing...';
+
+  try {
+    // Send exactly the removalCandidates array the preview returned -
+    // never reconstructed client-side.
+    const result = await sendMessagePromise({
+      action: 'approveReconciliationRemovals',
+      removalCandidates: candidates,
+    });
+    handleApprovalResult(result);
+  } catch (error) {
+    showReconcileMessage('Could not complete the removal right now. Nothing was changed.');
+  } finally {
+    approveBtn.disabled = false;
+    cancelBtn.disabled = false;
+    approveBtn.textContent = 'Approve removal';
+  }
+}
+
+function handleApprovalResult(result) {
+  if (!result || !result.ok) {
+    showReconcileMessage(describePreviewError(result));
+    return;
+  }
+
+  const deleted = result.deletedCount || 0;
+  const skipped = (result.skippedIds || []).length;
+
+  let message = `✓ Removed ${deleted} dashboard ${deleted === 1 ? 'entry' : 'entries'}.`;
+  if (skipped) {
+    message += ` ${skipped} ${skipped === 1 ? 'entry was' : 'entries were'} skipped because they changed since the preview.`;
+  }
+
+  showReconcileMessage(message);
 }
