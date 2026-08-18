@@ -1,8 +1,9 @@
 // Background service worker for LinkedIn Job Saver
 
-// url-utils.js is a dependency of dashboard-sync.js (URL safety
-// checking) and must be loaded first.
-importScripts('url-utils.js', 'dashboard-sync.js');
+// url-utils.js and filter-sync.js are dependencies of dashboard-sync.js
+// (URL safety checking, filter-settings payload building) and must be
+// loaded first.
+importScripts('url-utils.js', 'filter-sync.js', 'dashboard-sync.js');
 
 // Listen for messages from content script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -97,6 +98,26 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       const preview = await self.DashboardSync.requestReconciliationPreview(connection, identities);
 
       sendResponse(preview);
+    })();
+    return true;
+  }
+
+  if (request.action === 'syncFilterSettings') {
+    // Settings' "Sync Filters to Dashboard" control. Reads the current
+    // filterSettings and dashboardConnection, sends the normalized
+    // payload, and returns { ok, reason?, status? } plus a synced/
+    // unsupported summary for the confirmation message - see
+    // filter-sync.js's summarizeSync(). Never writes filterSettings or
+    // savedJobs: this is a one-way, read-only-locally push.
+    (async () => {
+      const stored = await chrome.storage.local.get(['dashboardConnection', 'filterSettings']);
+      const result = await self.DashboardSync.syncFilterSettings(
+        stored.dashboardConnection,
+        stored.filterSettings,
+      );
+
+      const summary = self.FilterSync.summarizeSync(stored.filterSettings);
+      sendResponse({ ...result, summary });
     })();
     return true;
   }

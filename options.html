@@ -452,6 +452,7 @@
       <button class="save-btn" id="saveConnectionBtn">🔗 Save Connection</button>
       <button class="reset-btn" id="testConnectionBtn" style="display: none;">📡 Test Connection</button>
       <button class="reset-btn" id="syncDashboardBtn" style="display: none;">🔄 Sync Dashboard</button>
+      <button class="reset-btn" id="syncFiltersBtn" style="display: none;">🧭 Sync Filters to Dashboard</button>
       <button class="reset-btn" id="disconnectBtn" style="display: none;">🔌 Disconnect</button>
     </div>
 
@@ -465,6 +466,11 @@
         <button class="reset-btn" id="reconcileCancelBtn">Cancel</button>
         <button class="save-btn" id="reconcileApproveBtn">Approve removal</button>
       </div>
+    </div>
+
+    <div class="reconcile-result" id="filterSyncResult" style="display: none;">
+      <p id="filterSyncMessage"></p>
+      <ul class="reconcile-candidate-list" id="filterSyncUnsupportedList" style="display: none;"></ul>
     </div>
   </div>
 

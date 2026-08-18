@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('saveConnectionBtn').addEventListener('click', saveDashboardConnection);
   document.getElementById('testConnectionBtn').addEventListener('click', testDashboardConnection);
   document.getElementById('syncDashboardBtn').addEventListener('click', runDashboardReconciliation);
+  document.getElementById('syncFiltersBtn').addEventListener('click', runFilterSync);
   document.getElementById('reconcileCancelBtn').addEventListener('click', cancelRemovalConfirmation);
   document.getElementById('reconcileApproveBtn').addEventListener('click', approveRemovals);
   document.getElementById('disconnectBtn').addEventListener('click', disconnectDashboard);
@@ -140,10 +141,12 @@ async function loadDashboardConnection() {
   const disconnectBtn = document.getElementById('disconnectBtn');
   const testConnectionBtn = document.getElementById('testConnectionBtn');
   const syncDashboardBtn = document.getElementById('syncDashboardBtn');
+  const syncFiltersBtn = document.getElementById('syncFiltersBtn');
   const statusLine = document.getElementById('connectionStatusLine');
 
   tokenInput.value = '';
   hideReconcileResult();
+  hideFilterSyncResult();
 
   if (!connection) {
     urlInput.value = '';
@@ -152,6 +155,7 @@ async function loadDashboardConnection() {
     disconnectBtn.style.display = 'none';
     testConnectionBtn.style.display = 'none';
     syncDashboardBtn.style.display = 'none';
+    syncFiltersBtn.style.display = 'none';
     statusLine.textContent = 'Not configured. Local job saving is unaffected either way.';
     return;
   }
@@ -162,6 +166,7 @@ async function loadDashboardConnection() {
   disconnectBtn.style.display = '';
   testConnectionBtn.style.display = '';
   syncDashboardBtn.style.display = '';
+  syncFiltersBtn.style.display = '';
   statusLine.textContent = describeConnectionStatus(connection);
 }
 
@@ -499,4 +504,85 @@ function handleApprovalResult(result) {
   }
 
   showReconcileMessage(message);
+}
+
+// ============================================
+// SYNC FILTERS TO DASHBOARD
+//
+// Sends the current filter settings (normalized/mapped via
+// filter-sync.js's FilterSync, run in the background service worker -
+// see background.js's 'syncFilterSettings' handler) to job-saver-web's
+// Discover import. Purely a one-way push of a read-only copy: never
+// mutates filterSettings, savedJobs, or LinkedIn filtering behavior -
+// this page's own filter form/local storage are untouched by a sync
+// either way.
+// ============================================
+
+async function runFilterSync() {
+  const syncBtn = document.getElementById('syncFiltersBtn');
+  syncBtn.disabled = true;
+  syncBtn.textContent = '🧭 Syncing...';
+  hideFilterSyncResult();
+
+  try {
+    const result = await sendMessagePromise({ action: 'syncFilterSettings' });
+    handleFilterSyncResult(result);
+  } catch (error) {
+    showFilterSyncMessage('Could not sync filters right now.');
+  } finally {
+    syncBtn.disabled = false;
+    syncBtn.textContent = '🧭 Sync Filters to Dashboard';
+  }
+}
+
+function handleFilterSyncResult(result) {
+  if (!result || !result.ok) {
+    showFilterSyncMessage(describePreviewError(result));
+    return;
+  }
+
+  const synced = (result.summary && result.summary.synced) || [];
+  const unsupported = (result.summary && result.summary.unsupported) || [];
+
+  let message;
+  if (synced.length === 0 && unsupported.length === 0) {
+    message = 'Synced - no filters were configured to send.';
+  } else {
+    message = `✓ ${synced.length} filter${synced.length === 1 ? '' : 's'} synced.`;
+    if (unsupported.length > 0) {
+      message += ` ${unsupported.length} LinkedIn-only setting${unsupported.length === 1 ? '' : 's'} weren't imported.`;
+    }
+  }
+
+  showFilterSyncMessage(message, unsupported);
+}
+
+// Shows the sync result message, and (only when there is at least one)
+// the plain list of unsupported setting names - so a user who wants to
+// know exactly what didn't transfer can see it without extra UI.
+function showFilterSyncMessage(message, unsupportedNames) {
+  const resultDiv = document.getElementById('filterSyncResult');
+  const messageEl = document.getElementById('filterSyncMessage');
+  const listEl = document.getElementById('filterSyncUnsupportedList');
+
+  messageEl.textContent = message;
+
+  listEl.innerHTML = '';
+  if (unsupportedNames && unsupportedNames.length > 0) {
+    for (const name of unsupportedNames) {
+      const li = document.createElement('li');
+      li.textContent = name;
+      listEl.appendChild(li);
+    }
+    listEl.style.display = 'block';
+  } else {
+    listEl.style.display = 'none';
+  }
+
+  resultDiv.style.display = 'block';
+}
+
+function hideFilterSyncResult() {
+  document.getElementById('filterSyncResult').style.display = 'none';
+  document.getElementById('filterSyncUnsupportedList').innerHTML = '';
 }
