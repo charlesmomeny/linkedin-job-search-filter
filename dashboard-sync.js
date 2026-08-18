@@ -6,13 +6,16 @@
 //
 // Loaded via importScripts() in the (classic, non-module) background
 // service worker, and requireable from Node for
-// test/dashboard-sync.test.js. UrlUtils must be loaded first in both
-// contexts (background.js does this via importScripts too).
+// test/dashboard-sync.test.js. UrlUtils and FilterSync must be loaded
+// first in both contexts (background.js does this via importScripts
+// too; test/dashboard-sync.test.js requires filter-sync.js before this
+// file for the same reason).
 
 const DASHBOARD_SYNC_PATH = '/api/jobs/sync';
 const DASHBOARD_PING_PATH = '/api/extension/ping';
 const DASHBOARD_RECONCILE_PREVIEW_PATH = '/api/jobs/reconcile/preview';
 const DASHBOARD_RECONCILE_APPROVE_PATH = '/api/jobs/reconcile/approve';
+const DASHBOARD_FILTER_SYNC_PATH = '/api/extension/filter-settings';
 
 // Validates the connection, normalizes the URL, and issues one
 // Authorization-bearing request to the dashboard - the piece syncJob()
@@ -111,6 +114,33 @@ const DashboardSync = {
 
     if (!result.response.ok) {
       return { ok: false, reason: 'http-error', status: result.response.status };
+    }
+
+    return { ok: true };
+  },
+
+  // Sends the current, normalized filter-settings payload (see
+  // filter-sync.js's FilterSync.buildSyncPayload()) to job-saver-web's
+  // Discover import. Read-only with respect to local state - never
+  // touches chrome.storage itself (the caller in background.js already
+  // read filterSettings before calling this) - so local filters, saved
+  // jobs, and LinkedIn filtering behavior are provably unaffected by a
+  // sync. Same never-throws ok/reason contract as syncJob().
+  async syncFilterSettings(connection, filterSettings) {
+    const result = await authenticatedDashboardFetch(connection, DASHBOARD_FILTER_SYNC_PATH, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(globalThis.FilterSync.buildSyncPayload(filterSettings)),
+    });
+
+    if (!result.ok) return result;
+
+    if (!result.response.ok) {
+      return {
+        ok: false,
+        reason: result.response.status === 401 ? 'unauthorized' : 'http-error',
+        status: result.response.status,
+      };
     }
 
     return { ok: true };

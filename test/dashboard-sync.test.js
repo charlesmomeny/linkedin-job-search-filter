@@ -11,6 +11,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 
 require('../url-utils.js');
+require('../filter-sync.js');
 const DashboardSync = require('../dashboard-sync.js');
 
 const VALID_CONNECTION = {
@@ -266,6 +267,127 @@ test('syncJob: the request body is the mapped payload, not the raw connection/jo
       assert.equal(body.sourceJobId, JOB_DATA.jobId);
       // The token must never end up in the body.
       assert.equal(JSON.stringify(body).includes(VALID_CONNECTION.token), false);
+    },
+  );
+});
+
+// ---------------------------------------------------------------------
+// syncFilterSettings (Settings' "Sync Filters to Dashboard" control)
+// ---------------------------------------------------------------------
+
+const FILTER_SETTINGS = {
+  maxJobAge: 30,
+  excludeTitles: ['Intern'],
+  excludeAnywhere: ['Oracle'],
+  excludeLocations: ['Texas'],
+  includeTitles: ['Program Manager'],
+  includeLocations: ['Remote'],
+  filterReposted: true,
+  enableFilters: true,
+  hideFiltered: true,
+  showReason: true,
+};
+
+test('syncFilterSettings: no connection configured never calls fetch, resolves not-configured', async () => {
+  await withMockedFetch(
+    () => {
+      throw new Error('fetch should not be called');
+    },
+    async (calls) => {
+      const result = await DashboardSync.syncFilterSettings(null, FILTER_SETTINGS);
+      assert.deepEqual(result, { ok: false, reason: 'not-configured' });
+      assert.equal(calls.length, 0);
+    },
+  );
+});
+
+test('syncFilterSettings: a successful response resolves ok:true', async () => {
+  await withMockedFetch(
+    () => ({ ok: true, status: 200 }),
+    async () => {
+      const result = await DashboardSync.syncFilterSettings(VALID_CONNECTION, FILTER_SETTINGS);
+      assert.deepEqual(result, { ok: true });
+    },
+  );
+});
+
+test('syncFilterSettings: a 401 response resolves ok:false, reason unauthorized', async () => {
+  await withMockedFetch(
+    () => ({ ok: false, status: 401 }),
+    async () => {
+      const result = await DashboardSync.syncFilterSettings(VALID_CONNECTION, FILTER_SETTINGS);
+      assert.deepEqual(result, { ok: false, reason: 'unauthorized', status: 401 });
+    },
+  );
+});
+
+test('syncFilterSettings: a non-401 HTTP error resolves ok:false, reason http-error', async () => {
+  await withMockedFetch(
+    () => ({ ok: false, status: 500 }),
+    async () => {
+      const result = await DashboardSync.syncFilterSettings(VALID_CONNECTION, FILTER_SETTINGS);
+      assert.deepEqual(result, { ok: false, reason: 'http-error', status: 500 });
+    },
+  );
+});
+
+test('syncFilterSettings: a network failure (fetch throws) resolves ok:false, does not throw', async () => {
+  await withMockedFetch(
+    () => {
+      throw new TypeError('Failed to fetch');
+    },
+    async () => {
+      const result = await DashboardSync.syncFilterSettings(VALID_CONNECTION, FILTER_SETTINGS);
+      assert.deepEqual(result, { ok: false, reason: 'network-error' });
+    },
+  );
+});
+
+test('syncFilterSettings: sends the correct method, URL, and Authorization/Content-Type headers', async () => {
+  await withMockedFetch(
+    () => ({ ok: true, status: 200 }),
+    async (calls) => {
+      await DashboardSync.syncFilterSettings(VALID_CONNECTION, FILTER_SETTINGS);
+
+      assert.equal(calls.length, 1);
+      assert.equal(calls[0].url, 'https://dashboard.example.com/api/extension/filter-settings');
+      assert.equal(calls[0].init.method, 'POST');
+      assert.equal(calls[0].init.headers['Authorization'], `Bearer ${VALID_CONNECTION.token}`);
+      assert.equal(calls[0].init.headers['Content-Type'], 'application/json');
+    },
+  );
+});
+
+test('syncFilterSettings: the request body is the mapped/versioned payload, not the raw filterSettings object', async () => {
+  await withMockedFetch(
+    () => ({ ok: true, status: 200 }),
+    async (calls) => {
+      await DashboardSync.syncFilterSettings(VALID_CONNECTION, FILTER_SETTINGS);
+
+      const body = JSON.parse(calls[0].init.body);
+      assert.equal(body.version, 1);
+      assert.equal(body.titleExclude, 'Intern');
+      assert.equal(body.titleInclude, 'Program Manager');
+      assert.equal(body.locationExclude, 'Texas');
+      assert.equal(body.maxPostingAgeDays, 30);
+      // Unsupported fields never leak into the payload.
+      assert.equal('excludeAnywhere' in body, false);
+      assert.equal('includeLocations' in body, false);
+      assert.equal('filterReposted' in body, false);
+      // The token must never end up in the body.
+      assert.equal(JSON.stringify(body).includes(VALID_CONNECTION.token), false);
+    },
+  );
+});
+
+test('syncFilterSettings: never mutates local filterSettings, regardless of the response', async () => {
+  const settingsCopy = JSON.parse(JSON.stringify(FILTER_SETTINGS));
+
+  await withMockedFetch(
+    () => ({ ok: false, status: 500 }),
+    async () => {
+      await DashboardSync.syncFilterSettings(VALID_CONNECTION, settingsCopy);
+      assert.deepEqual(settingsCopy, FILTER_SETTINGS);
     },
   );
 });
