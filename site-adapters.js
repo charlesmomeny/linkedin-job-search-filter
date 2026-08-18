@@ -107,12 +107,20 @@ const SiteAdapters = {
     extractJobDataFromCard(card) {
       const cardText = card.textContent.toLowerCase();
       const textParts = cardText.split('\n').map(s => s.trim()).filter(s => s.length > 0);
+      // Boundary-safe searchable text for excludeAnywhere/excludeLocations
+      // (content-universal.js's evaluateJobCard) - see
+      // card-text-extraction.js's own header comment for why this can't
+      // just be cardText: LinkedIn doesn't guarantee a real whitespace
+      // character between two adjacent card elements (e.g. title and
+      // company), only a CSS-only visual gap, which silently breaks a
+      // \bkeyword\b word-boundary match right at that seam.
+      const fullText = window.CardTextExtraction.extractSearchableText(card).toLowerCase();
 
       return {
         title: textParts.length > 0 ? textParts[0] : '',
         company: textParts.length > 1 ? textParts[1] : '',
         location: '',
-        fullText: cardText,
+        fullText,
         // LinkedIn shows "Reposted" and "posted X ago" as plain visible
         // text on the card - the same text this adapter already scrapes
         // for salary/keyword matching - rather than a stable selector,
