@@ -27,24 +27,22 @@
 //                        ago" text; Discover reads it off Greenhouse's
 //                        official first_published API field - different
 //                        sources, identical semantics.
-//   excludeTitles      -> SAFE_ADAPTATION. Same purpose (hide jobs whose
-//                        title contains a keyword), same requirement
-//                        semantics (title checked in isolation, never
-//                        company/description). Matching MECHANICS
-//                        differ: the extension requires a whole-word
-//                        match (\bkeyword\b - see keyword-matching.js);
-//                        Discover's titleExclude is a plain
-//                        case-insensitive substring match (existing,
-//                        untouched Discover behavior - not something
-//                        this package may change). A keyword that is a
-//                        substring of another word (e.g. "art" inside
-//                        "start") can therefore match slightly more
-//                        broadly on Discover than it did in the
-//                        extension.
-//   includeTitles      -> SAFE_ADAPTATION. Same "must contain at least
-//                        one of these keywords in the title, else hide"
-//                        OR-semantics as Discover's titleInclude. Same
-//                        substring-vs-whole-word matching caveat as
+//   excludeTitles      -> EXACT. Same purpose (hide jobs whose title
+//                        contains a keyword), same requirement semantics
+//                        (title checked in isolation, never company/
+//                        description), and - as of job-saver-web's
+//                        pre-merge semantics-check package - the same
+//                        matching MECHANICS too: Discover's titleExclude
+//                        now runs the same literal, whole-word/phrase
+//                        match (\bkeyword\b) this extension's
+//                        keyword-matching.js does, applied to every
+//                        Discover search (typed, saved, or imported
+//                        alike - not a hidden "import mode"). See
+//                        job-saver-web's lib/services/keywordMatching.ts.
+//   includeTitles      -> EXACT. Same "must contain at least one of
+//                        these keywords in the title, else hide"
+//                        OR-semantics as Discover's titleInclude, and
+//                        the same whole-word matching mechanics as
 //                        excludeTitles above.
 //   excludeLocations   -> SAFE_ADAPTATION. Same *purpose* (hide jobs at
 //                        an unwanted location), but the extension
