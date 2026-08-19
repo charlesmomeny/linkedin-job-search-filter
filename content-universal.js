@@ -314,7 +314,11 @@ function addFilterToggleButton() {
   `;
   
   viewSavedBtn.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ action: 'openPopup' });
+    chrome.runtime.sendMessage({ action: 'openPopup' }, () => {
+      if (chrome.runtime.lastError) {
+        console.error('Job Saver: View Saved Jobs failed:', chrome.runtime.lastError.message);
+      }
+    });
   });
   
   const settingsBtn = document.createElement('button');
@@ -332,7 +336,11 @@ function addFilterToggleButton() {
   `;
   
   settingsBtn.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ action: 'openOptions' });
+    chrome.runtime.sendMessage({ action: 'openOptions' }, () => {
+      if (chrome.runtime.lastError) {
+        console.error('Job Saver: Filter Settings failed:', chrome.runtime.lastError.message);
+      }
+    });
   });
   
   toggleContainer.appendChild(stats);
