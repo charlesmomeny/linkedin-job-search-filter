@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "LinkedIn Job Search Filter",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Free LinkedIn job filter: hide unwanted titles, reposted listings, old postings. No account, no tracking - data stays local.",
   "permissions": [
     "storage"

@@ -38,10 +38,10 @@ test('manifest: options_page still points at options.html', () => {
   assert.equal(manifest.options_page, 'options.html');
 });
 
-test('manifest: extension identity is unchanged (name, version, manifest_version)', () => {
+test('manifest: extension identity is unchanged (name, manifest_version) - version is expected to increment across releases, so it is only checked for shape below, not an exact value', () => {
   assert.equal(manifest.manifest_version, 3);
   assert.equal(manifest.name, 'LinkedIn Job Search Filter');
-  assert.equal(manifest.version, '1.1.0');
+  assert.match(manifest.version, /^\d+\.\d+\.\d+$/);
 });
 
 test('manifest: background service worker declaration is unchanged', () => {
