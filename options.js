@@ -29,7 +29,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('reconcileCancelBtn').addEventListener('click', cancelRemovalConfirmation);
   document.getElementById('reconcileApproveBtn').addEventListener('click', approveRemovals);
   document.getElementById('disconnectBtn').addEventListener('click', disconnectDashboard);
+  document.getElementById('viewSavedJobsBtn').addEventListener('click', openSavedJobs);
 });
+
+// Saved Jobs is reachable from Settings now that the toolbar icon opens
+// Settings directly instead of the Saved Jobs popup - see manifest.json
+// (action.default_popup removed) and background.js
+// (chrome.action.onClicked). options.html is itself a privileged
+// extension page, so this opens popup.html directly rather than going
+// through background.js's message-based 'openPopup' handler (the same
+// handler the in-page "View Saved Jobs" panel button still uses).
+function openSavedJobs() {
+  chrome.tabs.create({ url: chrome.runtime.getURL('popup.html') }, () => {
+    if (chrome.runtime.lastError) {
+      console.error('Job Saver: opening Saved Jobs failed:', chrome.runtime.lastError.message);
+    }
+  });
+}
 
 async function loadSettings() {
   try {

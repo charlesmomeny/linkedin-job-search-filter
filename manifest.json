@@ -14,8 +14,7 @@
     "http://*/*"
   ],
   "action": {
-    "default_popup": "popup.html",
-    "default_title": "LinkedIn Job Search Filter"
+    "default_title": "LinkedIn Job Search Filter - click to open Settings"
   },
   "options_page": "options.html",
   "background": {

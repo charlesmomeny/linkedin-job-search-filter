@@ -5,18 +5,45 @@
 // loaded first.
 importScripts('url-utils.js', 'filter-sync.js', 'dashboard-sync.js');
 
+// The ONE place Settings is ever opened from - the toolbar icon
+// (chrome.action.onClicked below) and every in-page "Filter Settings"
+// control (via the 'openOptions' message) both call this, rather than
+// each calling chrome.runtime.openOptionsPage() independently. Logs
+// chrome.runtime.lastError instead of swallowing it, since a
+// content-script sendMessage() with no response check previously gave
+// no visible signal at all if this ever failed.
+function openSettings() {
+  chrome.runtime.openOptionsPage(() => {
+    if (chrome.runtime.lastError) {
+      console.error('Job Saver: openOptionsPage failed:', chrome.runtime.lastError.message);
+    }
+  });
+}
+
+// MV3: action.onClicked only fires when the manifest has no
+// action.default_popup - see manifest.json. Clicking the toolbar icon
+// now opens Settings directly instead of a popup.
+chrome.action.onClicked.addListener(() => {
+  openSettings();
+});
+
 // Listen for messages from content script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'openOptions') {
-    // Open the options page
-    chrome.runtime.openOptionsPage();
+    openSettings();
     sendResponse({ success: true });
   }
 
   if (request.action === 'openPopup') {
-    // Open popup.html in a new tab
+    // Open popup.html (the Saved Jobs UI) in a new tab - it's no longer
+    // the toolbar's default_popup, so this is now the only way it opens
+    // from a content-script control.
     chrome.tabs.create({
       url: chrome.runtime.getURL('popup.html')
+    }, () => {
+      if (chrome.runtime.lastError) {
+        console.error('Job Saver: opening Saved Jobs failed:', chrome.runtime.lastError.message);
+      }
     });
     sendResponse({ success: true });
   }
