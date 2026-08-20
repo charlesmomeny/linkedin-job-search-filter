@@ -27,6 +27,87 @@ chrome.action.onClicked.addListener(() => {
   openSettings();
 });
 
+// ---------------------------------------------------------------------
+// Shared handler bodies for 'syncDashboard' and
+// 'approveReconciliationRemovals' - factored out so the internal
+// chrome.runtime.onMessage listener (used by options.js's "Sync
+// Dashboard"/"Approve removal" controls) and the external
+// chrome.runtime.onMessageExternal listener below (used by
+// job-saver-web's "Sync from Extension" button) run the EXACT SAME
+// code, never two copies of the sync/reconciliation logic. Both
+// read dashboardConnection/savedJobs from chrome.storage.local
+// themselves - the calling page (internal or external) never supplies
+// or receives the token; it only ever gets an ok/reason/preview result
+// back, matching DashboardSync's own established contract.
+// ---------------------------------------------------------------------
+
+async function performDashboardSync() {
+  const stored = await chrome.storage.local.get(['dashboardConnection', 'savedJobs']);
+  const connection = stored.dashboardConnection;
+  const savedJobs = stored.savedJobs || {};
+
+  for (const job of Object.values(savedJobs)) {
+    await self.DashboardSync.syncJob(connection, job);
+  }
+
+  const identities = self.DashboardSync.buildReconciliationIdentities(savedJobs);
+  return self.DashboardSync.requestReconciliationPreview(connection, identities);
+}
+
+async function performApproveReconciliationRemovals(removalCandidates) {
+  const stored = await chrome.storage.local.get(['dashboardConnection']);
+  return self.DashboardSync.approveReconciliationRemovals(stored.dashboardConnection, removalCandidates);
+}
+
+// ---------------------------------------------------------------------
+// External messaging: lets job-saver-web's own pages (Jobs Tracker's
+// "Sync from Extension" button) request the SAME sync/reconciliation
+// flow options.js's Settings page already triggers - without exposing
+// the dashboard token, without any new storage access from the page,
+// and without the page needing to know anything beyond "ask the
+// extension to sync." See manifest.json's externally_connectable for
+// the first line of defense (Chrome refuses to even deliver a message
+// from any origin not listed there) - ALLOWED_EXTERNAL_ORIGINS below is
+// a second, explicit check on top of that, so this file's own security
+// boundary doesn't depend solely on the manifest staying correct.
+//
+// Deliberately a SMALL allowlist of actions - only the two reconciliation
+// steps, not every internal action (e.g. never 'testDashboardConnection'
+// or 'syncFilterSettings' externally) - to keep the externally-reachable
+// surface no larger than this feature actually needs.
+// ---------------------------------------------------------------------
+
+const ALLOWED_EXTERNAL_ORIGINS = new Set([
+  'https://job-saver-web.vercel.app',
+  'http://localhost:3000',
+]);
+
+const ALLOWED_EXTERNAL_ACTIONS = new Set(['syncDashboard', 'approveReconciliationRemovals']);
+
+chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => {
+  if (!sender || !ALLOWED_EXTERNAL_ORIGINS.has(sender.origin)) {
+    sendResponse({ ok: false, reason: 'forbidden' });
+    return false;
+  }
+
+  if (!request || !ALLOWED_EXTERNAL_ACTIONS.has(request.action)) {
+    sendResponse({ ok: false, reason: 'forbidden' });
+    return false;
+  }
+
+  if (request.action === 'syncDashboard') {
+    performDashboardSync().then(sendResponse);
+    return true; // keep the message channel open for the async response
+  }
+
+  if (request.action === 'approveReconciliationRemovals') {
+    performApproveReconciliationRemovals(request.removalCandidates).then(sendResponse);
+    return true;
+  }
+
+  return false;
+});
+
 // Listen for messages from content script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'openOptions') {
@@ -105,27 +186,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   if (request.action === 'syncDashboard') {
     // Settings' "Sync Dashboard" control (step 1 of manual
-    // reconciliation - see options.js). Pushes every currently-saved
-    // job first (best-effort, same syncJob() used for the automatic
-    // per-save sync - a suppressed job just resolves ok:true with no
-    // job created, never a warning), so the preview that follows
-    // compares against up-to-date dashboard state, then returns a
-    // read-only preview. Never deletes anything itself - see
+    // reconciliation - see options.js) and job-saver-web's "Sync from
+    // Extension" button (see the external listener above) both trigger
+    // this exact same flow via performDashboardSync(): push every
+    // currently-saved job first (best-effort, same syncJob() used for
+    // the automatic per-save sync - a suppressed job just resolves
+    // ok:true with no job created, never a warning), so the preview
+    // that follows compares against up-to-date dashboard state, then
+    // return a read-only preview. Never deletes anything itself - see
     // DashboardSync.requestReconciliationPreview()'s own comment.
-    (async () => {
-      const stored = await chrome.storage.local.get(['dashboardConnection', 'savedJobs']);
-      const connection = stored.dashboardConnection;
-      const savedJobs = stored.savedJobs || {};
-
-      for (const job of Object.values(savedJobs)) {
-        await self.DashboardSync.syncJob(connection, job);
-      }
-
-      const identities = self.DashboardSync.buildReconciliationIdentities(savedJobs);
-      const preview = await self.DashboardSync.requestReconciliationPreview(connection, identities);
-
-      sendResponse(preview);
-    })();
+    performDashboardSync().then(sendResponse);
     return true;
   }
 
@@ -150,21 +220,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.action === 'approveReconciliationRemovals') {
-    // Settings' explicit "Approve removal" control - only ever called
-    // with the exact removalCandidates array a prior 'syncDashboard'
-    // preview returned (see options.js). Never reconstructs candidates
-    // here - request.removalCandidates is passed straight through to
-    // DashboardSync.approveReconciliationRemovals(), which itself only
-    // sends {id, updatedAt} for each.
-    (async () => {
-      const stored = await chrome.storage.local.get(['dashboardConnection']);
-      const result = await self.DashboardSync.approveReconciliationRemovals(
-        stored.dashboardConnection,
-        request.removalCandidates,
-      );
-
-      sendResponse(result);
-    })();
+    // Settings' explicit "Approve removal" control and job-saver-web's
+    // web-initiated removal confirmation both call this same
+    // performApproveReconciliationRemovals() - only ever with the exact
+    // removalCandidates array a prior 'syncDashboard' preview returned.
+    // Never reconstructs candidates here - request.removalCandidates is
+    // passed straight through to DashboardSync.approveReconciliationRemovals(),
+    // which itself only sends {id, updatedAt} for each.
+    performApproveReconciliationRemovals(request.removalCandidates).then(sendResponse);
     return true;
   }
 
