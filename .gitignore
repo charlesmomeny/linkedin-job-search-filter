@@ -10,3 +10,6 @@ multi-site-jobs-*.csv
 
 # OS cruft
 .DS_Store
+
+# Claude Code: private, machine-specific project instructions (never shared)
+CLAUDE.local.md
