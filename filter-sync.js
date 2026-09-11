@@ -59,9 +59,19 @@
 //                        company/title on Discover), never broaden them
 //                        into a new false exclusion.
 //
-// Six fields are UNSUPPORTED - never sent, and reported to the user as
+// Seven fields are UNSUPPORTED - never sent, and reported to the user as
 // LinkedIn-only rather than silently dropped:
 //
+//   allowedUsStates    -> UNSUPPORTED. A structural "this job's location
+//                        names a specific US state not in this list"
+//                        check (see us-location.js), not a free-text
+//                        keyword list like excludeLocations - Discover's
+//                        schema has no equivalent allow-list concept to
+//                        map it onto, and approximating it as more
+//                        locationExclude keywords would silently change
+//                        its semantics (state-structured vs. free-text
+//                        substring). Left unsupported until a real
+//                        Discover-side equivalent is audited.
 //   excludeAnywhere    -> UNSUPPORTED. Its whole point (per its own
 //                        Settings label, "Exclude from Anywhere (Title,
 //                        Description, Company)") is matching across
@@ -122,6 +132,7 @@ const FilterSync = {
     { key: 'includeTitles', label: 'Must Include in Title', supported: true },
     { key: 'excludeTitles', label: 'Exclude from Job Title', supported: true },
     { key: 'excludeLocations', label: 'Exclude Locations', supported: true },
+    { key: 'allowedUsStates', label: 'Allowed US States', supported: false },
     { key: 'excludeAnywhere', label: 'Exclude from Anywhere (Title, Description, Company)', supported: false },
     { key: 'includeLocations', label: 'Preferred Locations (highlight only)', supported: false },
     { key: 'filterReposted', label: 'Filter out reposted jobs', supported: false },

@@ -114,13 +114,19 @@ const SiteAdapters = {
       // character between two adjacent card elements (e.g. title and
       // company), only a CSS-only visual gap, which silently breaks a
       // \bkeyword\b word-boundary match right at that seam.
-      const fullText = window.CardTextExtraction.extractSearchableText(card).toLowerCase();
+      const fullTextRaw = window.CardTextExtraction.extractSearchableText(card);
+      const fullText = fullTextRaw.toLowerCase();
 
       return {
         title: textParts.length > 0 ? textParts[0] : '',
         company: textParts.length > 1 ? textParts[1] : '',
         location: '',
         fullText,
+        // Original-case text, needed only by UsLocation.detectState() -
+        // it requires an exact-uppercase state code to avoid mistaking
+        // ordinary words (e.g. "in", "or") for a state abbreviation. See
+        // content-universal.js's evaluateJobCard() and us-location.js.
+        fullTextRaw,
         // LinkedIn shows "Reposted" and "posted X ago" as plain visible
         // text on the card - the same text this adapter already scrapes
         // for salary/keyword matching - rather than a stable selector,

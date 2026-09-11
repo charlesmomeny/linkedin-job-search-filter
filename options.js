@@ -10,6 +10,7 @@ const defaultSettings = {
   excludeTitles: [],
   excludeAnywhere: [],
   excludeLocations: [],
+  allowedUsStates: ['CA'],
   includeTitles: [],
   includeLocations: []
 };
@@ -62,6 +63,7 @@ async function loadSettings() {
     document.getElementById('excludeTitles').value = (settings.excludeTitles || []).join('\n');
     document.getElementById('excludeAnywhere').value = (settings.excludeAnywhere || []).join('\n');
     document.getElementById('excludeLocations').value = (settings.excludeLocations || []).join('\n');
+    document.getElementById('allowedUsStates').value = (settings.allowedUsStates || ['CA']).join('\n');
     document.getElementById('includeTitles').value = (settings.includeTitles || []).join('\n');
     document.getElementById('includeLocations').value = (settings.includeLocations || []).join('\n');
 
@@ -83,6 +85,7 @@ async function saveSettings() {
       excludeTitles: textareaToArray('excludeTitles'),
       excludeAnywhere: textareaToArray('excludeAnywhere'),
       excludeLocations: textareaToArray('excludeLocations'),
+      allowedUsStates: textareaToArray('allowedUsStates'),
       includeTitles: textareaToArray('includeTitles'),
       includeLocations: textareaToArray('includeLocations')
     };

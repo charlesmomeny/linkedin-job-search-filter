@@ -59,9 +59,26 @@ async function loadFilterSettings() {
       excludeTitles: [],
       excludeAnywhere: [],
       excludeLocations: [],
+      allowedUsStates: ['CA'],
       includeTitles: [],
       includeLocations: []
     };
+
+    // `result.filterSettings || {defaults}` above only substitutes the
+    // defaults object when NO settings were ever saved at all. Anyone
+    // who saved filterSettings before allowedUsStates existed has a
+    // stored object that simply lacks the key - it passes straight
+    // through with allowedUsStates === undefined, which
+    // evaluateJobCard()'s `allowedUsStates.length > 0` check reads the
+    // same as an explicitly-cleared (disabled) list, silently no-op'ing
+    // the US-state filter for every already-installed user rather than
+    // applying its intended CA-only default. Normalize the missing key
+    // here, per-field, instead of only at the whole-object level. An
+    // explicit saved `[]` (user cleared the field in Settings) is a
+    // real array and is left alone - still "disabled", as intended.
+    if (!Array.isArray(filterSettings.allowedUsStates)) {
+      filterSettings.allowedUsStates = ['CA'];
+    }
   } catch (error) {
     console.error('Job Saver: Error loading filter settings:', error);
   }
@@ -454,6 +471,31 @@ function evaluateJobCard(card) {
     if (window.KeywordMatching.containsKeyword(fullText, loc)) {
       result.shouldFilter = true;
       result.reason = `Location: ${loc}`;
+      return result;
+    }
+  }
+
+  // Filter any job explicitly located in a US state that isn't in
+  // filterSettings.allowedUsStates. An empty/unset allow-list disables
+  // this check entirely (same "empty means no restriction" convention
+  // as every other list-based filter setting here) - Settings pre-fills
+  // it with ["CA"] so the out-of-the-box behavior is CA-only, but a
+  // user who deliberately clears the field gets no restriction, not an
+  // aggressive block-everything filter. Uses UsLocation.detectState() on
+  // the RAW (non-lowercased) card text, which only recognizes a state
+  // name in the exact position LinkedIn renders one ("<City>, XX",
+  // "<State>, United States") rather than a blind keyword search - so,
+  // unlike a hand-typed excludeLocations entry for a 2-letter state
+  // code, this can't be tripped by ordinary words like "in"/"or"/"hi"
+  // appearing elsewhere in the card. A bare "United States"/"United
+  // States (Remote)" with no state named is intentionally left
+  // unmatched (ambiguous/remote, not "explicitly located in another
+  // state").
+  if (filterSettings.allowedUsStates && filterSettings.allowedUsStates.length > 0) {
+    const usState = window.UsLocation.detectState(jobData.fullTextRaw || '');
+    if (usState && !window.UsLocation.isAllowed(usState, filterSettings.allowedUsStates)) {
+      result.shouldFilter = true;
+      result.reason = `Location: ${usState.name}`;
       return result;
     }
   }
