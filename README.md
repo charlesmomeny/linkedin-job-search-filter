@@ -136,9 +136,10 @@ filter settings untouched.
   local browser profile they were saved in. Use Export to CSV to back
   them up; optional Dashboard Sync copies saved jobs to your own Job Saver
   dashboard but is not a restore mechanism for the extension itself.
-- **Jobs saved with a bad title.** Versions before this fix could save
+- **Jobs saved with a bad title.** Versions before 1.2.1 could save
   LinkedIn's hidden notification counter (e.g. "1 notification") as a
-  job's title. To repair one, open that job on LinkedIn and click the
+  job's title, and any version saves "Job Title Not Found" when no title
+  can be read. To repair one, open that job on LinkedIn and click the
   extension's Save button (it reads "✓ Saved"): the stored title is replaced with the page's real
   title (nothing else changes) and, if Dashboard Sync is on, the
   dashboard copy is updated too. Real titles are never overwritten.

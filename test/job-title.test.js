@@ -121,7 +121,7 @@ function linkedInJobPage({ navHeading = '1 notification', jobTitle = 'Senior Sof
 // ---------------------------------------------------------------------
 
 test('isPlaceholderTitle: flags notification/message counters', () => {
-  for (const title of ['1 notification', '0 notifications total', '12 new notifications', '(3) notifications', '99+ notifications', '2 unread messages', 'Notifications', '  1\n notification ']) {
+  for (const title of ['1 notification', '0 notifications total', '12 new notifications', '(3) notifications', '99+ notifications', '2 unread messages', 'Notifications', '  1\n notification ', 'Job Title Not Found']) {
     assert.equal(JobTitle.isPlaceholderTitle(title), true, title);
   }
 });
@@ -306,6 +306,11 @@ test('findTitle: returns empty (never guesses) when only nav/placeholder heading
 
 test('repairedTitle: replaces a stored placeholder with a real extracted title', () => {
   assert.equal(JobTitle.repairedTitle('1 notification', '  Senior Software Engineer '), 'Senior Software Engineer');
+});
+
+test('repairedTitle: also repairs a record saved with the "Job Title Not Found" fallback', () => {
+  assert.equal(JobTitle.repairedTitle('Job Title Not Found', 'Data Engineer'), 'Data Engineer');
+  assert.equal(JobTitle.repairedTitle('Job Title Not Found', 'Job Title Not Found'), null);
 });
 
 test('repairedTitle: never touches a real stored title', () => {

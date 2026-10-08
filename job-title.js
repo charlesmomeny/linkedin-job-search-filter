@@ -39,12 +39,14 @@
 // guessed.
 
 const JobTitle = {
-  // Whole-string notification/message counters only - never a real
-  // title that merely contains one of these words. Mirrors
+  // Whole-string notification/message counters, plus this extension's
+  // own "Job Title Not Found" save fallback (content-universal.js) -
+  // never a real title that merely contains one of these words. Mirrors
   // job-saver-web's lib/utils/job-title.ts, which rejects the same
-  // titles at the sync API.
+  // titles at the sync API. A stored record with any of these titles is
+  // eligible for repairedTitle().
   PLACEHOLDER_TITLE_PATTERN:
-    /^\(?\d+\+?\)?\s+(?:new\s+|unread\s+)?(?:notifications?|messages?)(?:\s+total)?$|^(?:notifications?|messages?)$/i,
+    /^\(?\d+\+?\)?\s+(?:new\s+|unread\s+)?(?:notifications?|messages?)(?:\s+total)?$|^(?:notifications?|messages?)$|^job title not found$/i,
 
   TITLE_SELECTORS: [
     '.job-details-jobs-unified-top-card__job-title h1',
