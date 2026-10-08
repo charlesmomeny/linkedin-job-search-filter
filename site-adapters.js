@@ -166,14 +166,18 @@ const SiteAdapters = {
         dateSaved: new Date().toISOString()
       };
 
-      // Extract title
-      const titleElement = document.querySelector('h1') || 
-                          document.querySelector('h2') ||
-                          document.querySelector('[class*="job-title"]') ||
-                          document.querySelector('[class*="jobs-unified-top-card__job-title"]');
-      if (titleElement) {
-        data.title = titleElement.textContent.trim();
-      }
+      // Extract title - job-specific selectors, anchored on the company
+      // link, never a generic first-<h1>/<h2> (which picked up
+      // LinkedIn's hidden "1 notification" nav heading). See
+      // job-title.js. Empty when not found - never guessed.
+      const titleResult = window.JobTitle.findTitle(
+        document,
+        document.querySelector('a[href*="/company/"]')
+      );
+      data.title = titleResult.text;
+      // May be null when only the page <title> identified the job
+      // title - the metadata scan below then just has no block to skip.
+      const titleElement = titleResult.element;
 
       // Extract company
       let companyElement = document.querySelector('a[href*="/company/"]');

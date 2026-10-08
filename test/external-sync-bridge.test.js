@@ -15,7 +15,7 @@
 // Live cross-origin messaging behavior is verified manually - see the
 // task's own manual verification steps, not this file.
 //
-// Plain Node, built-in test runner only. Run with: node --test test/
+// Plain Node, built-in test runner only. Run with: node --test test/*.test.js
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
