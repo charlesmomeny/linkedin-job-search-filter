@@ -5,7 +5,7 @@
 // Dashboard URL handling, and the GET /api/extension/ping connection
 // test (success, unauthorized, network error, not configured).
 //
-// Plain Node, built-in test runner only. Run with: node --test test/
+// Plain Node, built-in test runner only. Run with: node --test test/*.test.js
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');

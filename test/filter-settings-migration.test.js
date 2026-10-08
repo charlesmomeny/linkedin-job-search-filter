@@ -36,7 +36,7 @@
 //       merge logic actually changes the filtering outcome, not just
 //       that the guard text exists.
 //
-// Plain Node, built-in test runner only. Run with: node --test test/
+// Plain Node, built-in test runner only. Run with: node --test test/*.test.js
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');

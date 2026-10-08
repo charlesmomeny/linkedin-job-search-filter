@@ -3,7 +3,7 @@
 // and the filter observer self-triggering on its own DOM writes.
 //
 // Plain Node, built-in test runner only (no package manager, no
-// third-party framework). Run with: node --test test/
+// third-party framework). Run with: node --test test/*.test.js
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');

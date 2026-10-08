@@ -13,7 +13,7 @@
 // does Filter Settings actually navigate) is verified manually/live -
 // see the task's own manual verification steps, not this file.
 //
-// Plain Node, built-in test runner only. Run with: node --test test/
+// Plain Node, built-in test runner only. Run with: node --test test/*.test.js
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
@@ -114,4 +114,26 @@ test('options.js: opening Saved Jobs never touches chrome.storage (pure navigati
   const match = optionsJsSource.match(/function openSavedJobs\(\) \{([\s\S]*?)\n\}/);
   assert.ok(match, 'expected an openSavedJobs function');
   assert.doesNotMatch(match[1], /chrome\.storage/);
+});
+
+// ---------------------------------------------------------------------
+// Title-extraction wiring (job-title.js - see test/job-title.test.js)
+// ---------------------------------------------------------------------
+
+test('manifest: job-title.js loads before site-adapters.js, which uses window.JobTitle', () => {
+  const scripts = manifest.content_scripts[0].js;
+  assert.ok(scripts.includes('job-title.js'));
+  assert.ok(scripts.indexOf('job-title.js') < scripts.indexOf('site-adapters.js'));
+});
+
+test('site-adapters.js: LinkedIn title extraction no longer takes the first <h1>/<h2> on the page', () => {
+  const adapters = fs.readFileSync(path.join(__dirname, '..', 'site-adapters.js'), 'utf8');
+  assert.doesNotMatch(adapters, /document\.querySelector\('h1'\)/);
+  assert.doesNotMatch(adapters, /document\.querySelector\('h2'\)/);
+  assert.match(adapters, /window\.JobTitle\.findTitle\(/);
+});
+
+test('content-universal.js: already-saved repair only rewrites the title via JobTitle.repairedTitle()', () => {
+  assert.match(contentSource, /window\.JobTitle\.repairedTitle\(existingJob\.title, jobData\.title\)/);
+  assert.match(contentSource, /existingJob\.title = repairedTitle;/);
 });

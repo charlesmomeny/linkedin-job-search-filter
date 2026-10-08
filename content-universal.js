@@ -800,6 +800,24 @@ async function saveCurrentJob() {
 
     if (existingKey) {
       const existingJob = savedJobs[existingKey];
+
+      // One-time repair for jobs saved before the title-extraction fix
+      // (see job-title.js): if this saved record's title is a
+      // notification counter like "1 notification" and this page now
+      // yields a real title, replace just the title and re-sync, so the
+      // dashboard's copy is corrected through the normal sync upsert.
+      // Nothing else on the record is touched.
+      const repairedTitle = window.JobTitle.repairedTitle(existingJob.title, jobData.title);
+      if (repairedTitle) {
+        existingJob.title = repairedTitle;
+        await chrome.storage.local.set({ savedJobs });
+        button.textContent = '✓ Title Fixed';
+        button.style.backgroundColor = '#057642';
+        showNotification(`Updated saved job title to "${repairedTitle}"`);
+        syncJobToDashboard(existingJob, button);
+        setTimeout(refreshJobSectionState, 2000);
+        return;
+      }
       const savedDate = new Date(existingJob.dateSaved).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',

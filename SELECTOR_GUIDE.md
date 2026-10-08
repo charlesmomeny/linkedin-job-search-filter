@@ -22,7 +22,11 @@ Look for these elements and note their selectors:
 - **Location**: Usually has class like "location", "city", etc.
 
 ### On Job Detail Pages:
-- **Job Title**: Usually an `<h1>` or large heading
+- **Job Title**: On LinkedIn, NOT reliably an `<h1>` - the current
+  layout has no `<h1>` at all, and the first heading on the page is a
+  hidden notification counter ("0 notifications"). LinkedIn title
+  extraction lives in `job-title.js`; change it there (with a test in
+  `test/job-title.test.js`) rather than adding a first-heading selector.
 - **Company Name**: Link or text with company name
 - **Location**: Text or badge showing location/remote status
 

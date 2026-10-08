@@ -70,10 +70,26 @@ or another Chromium-based browser.
 
 ## Privacy & Data
 
-Everything this extension does happens locally in your browser. It makes
-no network requests of any kind - there is no analytics, telemetry, or
-server component, and nothing you save or configure is ever sent
-anywhere.
+By default everything this extension does happens locally in your
+browser. There is no analytics or telemetry, and with the default
+settings it makes no network requests - nothing you save or configure is
+sent anywhere.
+
+**Optional Dashboard Sync** is the one exception, and it is off until
+you set it up. If you enter a Dashboard URL and Extension Token in
+Settings (and grant the browser's host-permission prompt for that URL),
+the extension sends to that dashboard - and only that dashboard:
+- each job you save (title, company, location, URL, LinkedIn job ID,
+  date saved, and the posting metadata shown on the page), and
+- on request, your saved-job identities (source + job ID) for
+  reconciliation, and - when you click "Sync Filters to Dashboard" -
+  your filter settings.
+
+The dashboard named in `manifest.json`'s `externally_connectable`
+(the Job Saver web app, plus `localhost:3000` for development) can also
+ask the extension to run that same sync - it does nothing unless Dashboard
+Sync is configured. The token is stored only in this browser and can be
+revoked from the dashboard at any time.
 
 **What's stored**, in your browser's local extension storage
 (`chrome.storage.local`), never synced or exported unless you explicitly
@@ -83,6 +99,8 @@ click "Export to CSV":
 - `filterSettings` - your keyword/location/repost/age filter preferences
 - `panelPosition` - where you last dragged the floating panel to, so it
   stays out of your way on future visits
+- `dashboardConnection` - only if you set up Dashboard Sync: the
+  dashboard URL and extension token
 
 **Historical data note**: an earlier version of this extension included
 an Easy Apply autofill feature that stored profile information locally
@@ -114,9 +132,17 @@ filter settings untouched.
   as visible text on the job card.** If LinkedIn changes how or whether
   it displays a "Reposted" label or a posting date, these filters may
   stop having any effect until the detection logic is updated.
-- **No sync.** Saved jobs and settings live only in the local browser
-  profile they were saved in; nothing is backed up automatically (use
-  Export to CSV for that).
+- **No automatic backup.** Saved jobs and settings live only in the
+  local browser profile they were saved in. Use Export to CSV to back
+  them up; optional Dashboard Sync copies saved jobs to your own Job Saver
+  dashboard but is not a restore mechanism for the extension itself.
+- **Jobs saved with a bad title.** Versions before 1.2.1 could save
+  LinkedIn's hidden notification counter (e.g. "1 notification") as a
+  job's title, and any version saves "Job Title Not Found" when no title
+  can be read. To repair one, open that job on LinkedIn and click the
+  extension's Save button (it reads "✓ Saved"): the stored title is replaced with the page's real
+  title (nothing else changes) and, if Dashboard Sync is on, the
+  dashboard copy is updated too. Real titles are never overwritten.
 
 ## File Structure
 
@@ -130,6 +156,13 @@ linkedin-job-search-filter/
 ├── keyword-matching.js    # Safe literal keyword matching for filters
 ├── lifecycle-utils.js     # Observer/timer lifecycle helpers
 ├── job-freshness.js       # Reposted / posting-age detection
+├── job-title.js           # Job-detail title extraction (never nav/notification headings)
+├── job-location.js        # Job-detail location line parsing
+├── job-metadata.js        # Job-detail metadata (workplace/employment type, salary, applicants)
+├── us-location.js         # US state detection for location filters
+├── card-text-extraction.js # Search-safe text from job cards
+├── dashboard-sync.js      # Optional Dashboard Sync API client
+├── filter-sync.js         # Filter-settings import/export for Dashboard Sync
 ├── csv-utils.js           # CSV parsing for popup import
 ├── url-utils.js           # Job URL scheme validation
 ├── popup.html             # Saved jobs viewer
@@ -142,6 +175,14 @@ linkedin-job-search-filter/
 ```
 
 ## Setup Instructions
+
+### Run the Automated Tests
+
+Plain Node (v18+), built-in test runner, no dependencies to install:
+
+```bash
+node --test test/*.test.js
+```
 
 ### Test the Extension
 
