@@ -82,7 +82,8 @@ the extension sends to that dashboard - and only that dashboard:
 - each job you save (title, company, location, URL, LinkedIn job ID,
   date saved, and the posting metadata shown on the page), and
 - on request, your saved-job identities (source + job ID) for
-  reconciliation, and your filter settings for import.
+  reconciliation, and - when you click "Sync Filters to Dashboard" -
+  your filter settings.
 
 The dashboard named in `manifest.json`'s `externally_connectable`
 (the Job Saver web app, plus `localhost:3000` for development) can also
